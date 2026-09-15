@@ -1,0 +1,200 @@
+<title>Social Preneur Blueprint</title>
+<meta name="description" content="Architecture blueprint for a multi-client AI social media management and automation platform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Schibsted+Grotesk:wght@600;700;800&display=swap">
+<style>
+:root{
+  --ground:#F4F6F5; --surface:#FFFFFF; --sunk:#EAEFEC; --ink:#17201D; --muted:#56635E; --line:#D4DCD8;
+  --accent:#0F6B57; --accent-soft:#DDEFE8; --accent-ink:#0B4F40;
+  --warn:#8A5A10; --warn-soft:#F7EBD6; --crit:#A8392B; --crit-soft:#F6E0DC; --info:#2D5A87; --info-soft:#E1EAF4;
+  --display:"Schibsted Grotesk","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1412; --surface:#161D1A; --sunk:#1C2521; --ink:#E2E9E6; --muted:#9AA8A2; --line:#2B3632;
+    --accent:#52C2A3; --accent-soft:#163A30; --accent-ink:#8FDCC6;
+    --warn:#E3AE5C; --warn-soft:#352918; --crit:#EF8C7E; --crit-soft:#3B201C; --info:#8DB6E0; --info-soft:#1B2A3A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1412; --surface:#161D1A; --sunk:#1C2521; --ink:#E2E9E6; --muted:#9AA8A2; --line:#2B3632;
+  --accent:#52C2A3; --accent-soft:#163A30; --accent-ink:#8FDCC6;
+  --warn:#E3AE5C; --warn-soft:#352918; --crit:#EF8C7E; --crit-soft:#3B201C; --info:#8DB6E0; --info-soft:#1B2A3A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.6;padding:0 20px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;padding-block:40px 96px}
+@media (max-width:980px){.shell{grid-template-columns:minmax(0,1fr);gap:24px;padding-block:24px 64px}}
+
+/* index */
+.index{position:sticky;top:24px;align-self:start;font-size:13.5px}
+.index .brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.slot{width:22px;height:16px;border:2px solid var(--accent);border-top-width:6px;border-radius:2px}
+.index ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:ix}
+.index li a{display:grid;grid-template-columns:26px 1fr;padding:5px 8px;border-radius:6px;color:var(--muted);text-decoration:none}
+.index li a:hover{background:var(--sunk);color:var(--ink)}
+.index li a span:first-child{font-family:var(--mono);font-size:12px;padding-top:1px}
+.index .sep{height:1px;background:var(--line);margin:8px 0}
+@media (max-width:980px){
+  .index{position:static}
+  .index ol{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+}
+
+/* masthead */
+main{min-width:0;max-width:880px}
+.mast{display:grid;gap:14px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,50px);line-height:1.04;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.lede{font-size:18px;color:var(--muted);max-width:64ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.flow .arrow{color:var(--muted);font-size:12px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;line-height:1;padding:5px 9px;border-radius:999px;background:var(--sunk);color:var(--ink);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.chip.ok{background:var(--accent-soft);color:var(--accent-ink)} .chip.ok::before{background:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.warn::before{background:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)} .chip.crit::before{background:var(--crit)}
+.chip.info{background:var(--info-soft);color:var(--info)} .chip.info::before{background:var(--info)}
+.chip.plain::before{display:none}
+
+/* sections */
+section{padding-block:44px 8px;scroll-margin-top:16px}
+section + section{border-top:1px solid var(--line)}
+h2{font-family:var(--display);font-weight:700;font-size:29px;letter-spacing:-.018em;line-height:1.15;margin:0 0 6px;text-wrap:balance;display:flex;gap:14px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--accent);letter-spacing:0}
+.sub{color:var(--muted);margin:0 0 22px;max-width:68ch}
+h3{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em;margin:32px 0 10px;text-wrap:balance}
+h4{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+p,ul,ol.steps{max-width:70ch}
+ul{padding-left:20px}
+li{margin:3px 0}
+code,.mono{font-family:var(--mono);font-size:.88em}
+p code,li code,td code{background:var(--sunk);padding:1px 5px;border-radius:4px}
+
+/* callouts */
+.note{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:18px 0;max-width:none}
+.note > :first-child{margin-top:0} .note > :last-child{margin-bottom:0}
+.note.warn{background:var(--warn-soft);border-color:transparent}
+.note.crit{background:var(--crit-soft);border-color:transparent}
+.note.ok{background:var(--accent-soft);border-color:transparent}
+.note .tag{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;display:block;margin-bottom:4px}
+.note.warn .tag{color:var(--warn)} .note.crit .tag{color:var(--crit)} .note.ok .tag{color:var(--accent-ink)}
+
+/* decision list */
+.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:18px 0}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;align-content:start}
+.dec b{font-family:var(--display);font-size:15.5px;font-weight:700;letter-spacing:-.005em}
+.dec span{font-size:14px;color:var(--muted)}
+.dec .why{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+
+/* tables */
+.scroll{overflow-x:auto;margin:14px 0 20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.8px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--sunk);white-space:nowrap}
+td.k{font-family:var(--mono);font-size:12.8px;white-space:nowrap;color:var(--accent-ink);font-weight:500}
+td.c{font-family:var(--mono);font-size:12.3px;color:var(--ink);min-width:260px}
+td.s{color:var(--muted);min-width:180px}
+tr.group td{background:var(--sunk);font-family:var(--display);font-weight:700;font-size:13.5px;color:var(--ink);padding:7px 12px}
+.matrix td{text-align:center;font-size:13px;white-space:nowrap}
+.matrix td:first-child{text-align:left;white-space:normal;min-width:190px}
+.y{color:var(--accent);font-weight:600}
+.a{color:var(--info);font-weight:500}
+.nn{color:var(--line);font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+
+/* code blocks */
+pre.code{font-family:var(--mono);font-size:12.8px;line-height:1.55;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0 20px;color:var(--ink)}
+pre.code .cm{color:var(--muted)}
+pre.code .hl{color:var(--accent-ink);font-weight:500}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;margin:14px 0 20px}
+pre.mermaid{margin:0;display:flex;justify-content:center}
+
+/* phases */
+.phases{display:grid;gap:0;margin:18px 0;border-left:2px solid var(--line)}
+.phase{position:relative;padding:4px 0 22px 24px}
+.phase::before{content:"";position:absolute;left:-7px;top:10px;width:12px;height:12px;border-radius:50%;background:var(--ground);border:2px solid var(--accent)}
+.phase header{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
+.phase header b{font-family:var(--display);font-size:17px;font-weight:700}
+.phase header .mono{color:var(--muted);font-size:12px}
+.phase p{margin:4px 0}
+.phase .exit{font-size:13.5px;color:var(--muted)}
+.phase .exit strong{color:var(--accent-ink);font-weight:600}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 28px}
+.two > div > h4:first-child{margin-top:6px}
+ol.steps{padding-left:22px}
+ol.steps li{padding-left:4px;margin:5px 0}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px;align-content:start}
+.stage .cost{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stage .cost small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0}
+.stage .who{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.stage ul{margin:0;font-size:13.5px;padding-left:18px}
+.questions li{margin:10px 0}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+</style>
+
+<div class="shell">
+<nav class="index" aria-label="Blueprint sections">
+  <div class="brand"><span class="slot" aria-hidden="true"></span>Social Preneur</div>
+  <ol>
+    <li><a href="#review"><span>R</span><span>Brief review</span></a></li>
+    <li><a href="#reality"><span>!</span><span>Platform reality check</span></a></li>
+    <li class="sep" aria-hidden="true"></li>
+    <li><a href="#architecture"><span>01</span><span>Product architecture</span></a></li>
+    <li><a href="#mvp"><span>02</span><span>MVP feature map</span></a></li>
+    <li><a href="#flows"><span>03</span><span>User flows</span></a></li>
+    <li><a href="#schema"><span>04</span><span>Database schema</span></a></li>
+    <li><a href="#permissions"><span>05</span><span>Permission model</span></a></li>
+    <li><a href="#routes"><span>06</span><span>Pages and routes</span></a></li>
+    <li><a href="#integrations"><span>07</span><span>Integration architecture</span></a></li>
+    <li><a href="#ai"><span>08</span><span>AI architecture</span></a></li>
+    <li><a href="#publishing"><span>09</span><span>Scheduling and publishing</span></a></li>
+    <li><a href="#stack"><span>10</span><span>Technology stack</span></a></li>
+    <li><a href="#deploy"><span>11</span><span>Free-first deployment</span></a></li>
+    <li><a href="#phases"><span>12</span><span>Development phases</span></a></li>
+    <li class="sep" aria-hidden="true"></li>
+    <li><a href="#questions"><span>✓</span><span>Confirmed decisions</span></a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="mast">
+  <div class="eyebrow">Product blueprint · v0.2 · decisions confirmed 14 Sep 2026</div>
+  <h1>Social Preneur: one workspace where every client's posts are planned, approved and dispatched</h1>
+  <p class="lede">Architecture for an AI-assisted, multi-client social media operations platform, built for VTurnU Digital Solutions LLP. Design is complete and decisions are confirmed; Phase 0 is next.</p>
+  <div class="meta"><span><b>App:</b> app.socialpreneur.in</span><span><b>Scale target:</b> 10 to 100+ clients, same architecture</span><span><b>Languages:</b> English, Tamil</span><span><b>Platforms:</b> LinkedIn, Facebook, Instagram, X, Threads, Pinterest</span><span><b>API policy:</b> free official APIs only</span></div>
+  <div class="flow" aria-label="Post lifecycle">
+    <span class="chip plain">Idea</span><span class="arrow">→</span>
+    <span class="chip plain">Draft</span><span class="arrow">→</span>
+    <span class="chip info">Design</span><span class="arrow">→</span>
+    <span class="chip info">Internal review</span><span class="arrow">→</span>
+    <span class="chip warn">Client review</span><span class="arrow">→</span>
+    <span class="chip ok">Approved</span><span class="arrow">→</span>
+    <span class="chip ok">Scheduled</span><span class="arrow">→</span>
+    <span class="chip ok">Published</span>
+  </div>
+</header>
+
+<section id="review">
+  <h2><span class="n">R</span>Where this blueprint departs from the brief</h2>
+  <p class="sub">You asked for better solutions where they exist. These are the changes I recommend. Each one is already built into the sections that follow.</p>
+  <div class="note">
+    <p>Full blueprint content is in the <a href="/docs/postroom-blueprint.html">detailed documentation</a>.</p>
+  </div>
+</section>
+
+</main>
+</div>
