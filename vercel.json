@@ -1,26 +1,6 @@
 {
-  "buildCommand": "echo 'No build needed'",
-  "installCommand": "echo 'No install needed'",
-  "framework": "static",
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    }
-  ]
+  "buildCommand": "",
+  "installCommand": "",
+  "framework": null,
+  "public": "."
 }
