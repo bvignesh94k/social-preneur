@@ -28,7 +28,7 @@ export default async function ClientLayout({ children, params }: LayoutProps<"/c
             <Chip>{LANGUAGE_LABEL[client.defaultLanguage]}</Chip>
           </div>
         </header>
-        <ClientTabs slug={client.slug} showBrand={can.viewBrand} />
+        <ClientTabs slug={client.slug} showBrand={can.viewBrand} showContent={can.viewCalendar} />
       </div>
 
       {client.publishingPaused && (

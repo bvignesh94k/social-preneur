@@ -1,4 +1,12 @@
-import type { AgencyRole, BrandRuleType, ClientRole, FactKind, SocialPlatform } from "@sp/core";
+import type {
+  AgencyRole,
+  BrandRuleType,
+  ClientRole,
+  FactKind,
+  PostStatus,
+  SocialPlatform,
+  VariantStatus,
+} from "@sp/core";
 
 export const OFFERING_KIND_LABEL = { product: "Product", service: "Service" } as const;
 
@@ -71,3 +79,32 @@ export function formatMinutes(minutes: number): string {
   const hours = minutes / 60;
   return `${hours} hour${hours === 1 ? "" : "s"}`;
 }
+
+export const PLATFORM_SHORT: Record<SocialPlatform, string> = {
+  linkedin: "Li",
+  facebook: "Fb",
+  instagram: "Ig",
+  x: "X",
+  threads: "Th",
+  pinterest: "Pi",
+};
+
+export const POST_STATUS_TONE: Record<PostStatus, "neutral" | "ok" | "warn" | "crit" | "info"> = {
+  idea: "neutral",
+  draft: "neutral",
+  needs_creative: "warn",
+  ready: "info",
+  scheduled: "ok",
+  published: "ok",
+  failed: "crit",
+  archived: "neutral",
+};
+
+export const VARIANT_STATUS_LABEL: Record<VariantStatus, string> = {
+  pending: "Not ready",
+  ready: "Ready",
+  queued: "Queued",
+  published: "Published",
+  failed: "Failed",
+  skipped: "Skipped",
+};

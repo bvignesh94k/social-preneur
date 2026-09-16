@@ -533,6 +533,7 @@ export async function duplicatePost(
           linkUrl: variant.linkUrl,
           firstComment: variant.firstComment,
           hashtags: variant.hashtags,
+          hasMedia: variant.hasMedia,
           issues: variant.issues,
           status: "pending" as const,
         })),
@@ -602,6 +603,7 @@ export async function saveVariant(
       linkUrl: cleanText(input.linkUrl),
       firstComment: cleanText(input.firstComment),
       hashtags,
+      hasMedia: input.hasMedia ?? false,
       issues,
       status,
     };
@@ -617,6 +619,7 @@ export async function saveVariant(
           linkUrl: values.linkUrl,
           firstComment: values.firstComment,
           hashtags: values.hashtags,
+          hasMedia: values.hasMedia,
           issues: values.issues,
           status: values.status,
         },

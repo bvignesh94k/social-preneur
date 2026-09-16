@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function ClientTabs({ slug, showBrand }: { slug: string; showBrand: boolean }) {
+export function ClientTabs({
+  slug,
+  showBrand,
+  showContent,
+}: {
+  slug: string;
+  showBrand: boolean;
+  showContent: boolean;
+}) {
   const pathname = usePathname();
   const base = `/c/${slug}`;
   const tabs = [
     { href: base, label: "Overview", active: pathname === base },
     ...(showBrand ? [{ href: `${base}/brand`, label: "Brand Brain", active: pathname.startsWith(`${base}/brand`) }] : []),
+    ...(showContent
+      ? [{ href: `${base}/content`, label: "Content", active: pathname.startsWith(`${base}/content`) }]
+      : []),
   ];
 
   return (

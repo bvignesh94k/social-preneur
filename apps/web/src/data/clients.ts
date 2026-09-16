@@ -84,6 +84,7 @@ export const getClientOverview = cache(async (slug: string) => {
     can: {
       pausePublishing: isAllowed(actor, "publishing.pauseClient", target),
       viewBrand: canViewBrand,
+      viewCalendar: isAllowed(actor, "calendar.view", target),
     },
   };
 });

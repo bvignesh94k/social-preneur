@@ -43,6 +43,13 @@
       "when": 1789553353134,
       "tag": "0005_friendly_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789554330307,
+      "tag": "0006_bizarre_victor_mancha",
+      "breakpoints": true
     }
   ]
 }

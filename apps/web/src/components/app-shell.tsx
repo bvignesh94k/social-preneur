@@ -5,7 +5,7 @@ import { AGENCY_ROLE_LABEL } from "@/lib/labels";
 import { ClientSwitcher, type SwitcherClient } from "./client-switcher";
 import { SidebarNav } from "./sidebar-nav";
 
-const COMING_NEXT = ["Today", "Calendar", "Content", "Approvals", "Media", "Integrations", "Analytics"];
+const COMING_NEXT = ["Today", "Approvals", "Media", "Integrations", "Analytics"];
 
 export function AppShell({
   children,

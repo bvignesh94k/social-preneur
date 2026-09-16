@@ -8,6 +8,7 @@ import {
   type VariantIssue,
 } from "@sp/core";
 import {
+  boolean,
   date,
   foreignKey,
   index,
@@ -155,6 +156,9 @@ export const postVariants = pgTable(
     linkUrl: text("link_url"),
     firstComment: text("first_comment"),
     hashtags: textList("hashtags"),
+    // Until the media library exists this records that the creative is ready,
+    // which is what Instagram and Pinterest refuse to publish without.
+    hasMedia: boolean("has_media").notNull().default(false),
     status: variantStatus("status").notNull().default("pending"),
     issues: jsonb("issues").$type<VariantIssue[]>().notNull().default([]),
     publishedUrl: text("published_url"),
