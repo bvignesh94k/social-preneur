@@ -1,0 +1,39 @@
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+.wrangler/
+.vercel/
+.open-next/
+*.tsbuildinfo
+next-env.d.ts
+
+# local data
+.data/
+*.pglite/
+
+# env and secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# test output
+playwright-report/
+test-results/

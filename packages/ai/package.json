@@ -1,0 +1,23 @@
+{
+  "name": "@sp/ai",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sp/core": "workspace:*",
+    "node-html-parser": "^9.0.4",
+    "undici": "^8.10.2",
+    "zod": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}
