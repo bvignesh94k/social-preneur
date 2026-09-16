@@ -2,142 +2,142 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
     setError("");
 
-    if (email === "demo@example.com" && password === "password123") {
-      localStorage.setItem("user", JSON.stringify({ email, name: "Demo User" }));
-      router.push("/dashboard");
-    } else {
-      setError("Invalid credentials. Try demo@example.com / password123");
-    }
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    setLoading(false);
-  };
+      if (!response.ok) {
+        const body = (await response.json()) as { message?: string };
+        setError(body.message ?? "Sign in failed.");
+        setBusy(false);
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Could not reach the server. Check your connection and try again.");
+      setBusy(false);
+    }
+  }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#f5f5f5"
-    }}>
-      <div style={{
-        width: "100%",
-        maxWidth: "400px",
-        backgroundColor: "white",
-        padding: "40px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-      }}>
-        <h1 style={{ textAlign: "center", margin: "0 0 30px 0" }}>
-          Social Preneur
-        </h1>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px 20px",
+        background: "#F4F6F5",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "400px",
+          background: "#FFFFFF",
+          border: "1px solid #D4DCD8",
+          borderRadius: "12px",
+          padding: "32px",
+        }}
+      >
+        <h1 style={{ margin: "0 0 4px", fontSize: "24px", letterSpacing: "-0.02em" }}>Social Preneur</h1>
+        <p style={{ margin: "0 0 24px", color: "#56635E", fontSize: "14px" }}>Sign in to your command center.</p>
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            <label htmlFor="email" style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: 600 }}>
               Email
             </label>
             <input
+              id="email"
               type="email"
+              autoComplete="username"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="demo@example.com"
+              onChange={(event) => setEmail(event.target.value)}
+              required
               style={{
                 width: "100%",
-                padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
+                padding: "10px 12px",
+                border: "1px solid #D4DCD8",
+                borderRadius: "8px",
                 fontSize: "14px",
-                boxSizing: "border-box"
               }}
-              required
             />
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}>
+            <label htmlFor="password" style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: 600 }}>
               Password
             </label>
             <input
+              id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password123"
+              onChange={(event) => setPassword(event.target.value)}
+              required
               style={{
                 width: "100%",
-                padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
+                padding: "10px 12px",
+                border: "1px solid #D4DCD8",
+                borderRadius: "8px",
                 fontSize: "14px",
-                boxSizing: "border-box"
               }}
-              required
             />
           </div>
 
-          {error && (
-            <div style={{
-              padding: "10px",
-              backgroundColor: "#ffe0e0",
-              color: "#c00",
-              borderRadius: "6px",
-              fontSize: "14px"
-            }}>
+          {error ? (
+            <p
+              role="alert"
+              style={{
+                margin: 0,
+                padding: "10px 12px",
+                background: "#F6E0DC",
+                color: "#A8392B",
+                borderRadius: "8px",
+                fontSize: "13.5px",
+              }}
+            >
               {error}
-            </div>
-          )}
+            </p>
+          ) : null}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={busy}
             style={{
-              padding: "12px",
-              backgroundColor: "#0F6B57",
-              color: "white",
+              padding: "11px 16px",
+              background: busy ? "#7FA69B" : "#0F6B57",
+              color: "#FFFFFF",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "8px",
               fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
-              opacity: loading ? 0.7 : 1
+              fontWeight: 600,
+              cursor: busy ? "default" : "pointer",
             }}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {busy ? "Signing in" : "Sign in"}
           </button>
         </form>
-
-        <div style={{ marginTop: "20px", textAlign: "center" }}>
-          <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px 0" }}>
-            Demo credentials:
-          </p>
-          <p style={{ color: "#999", fontSize: "12px", margin: "0" }}>
-            demo@example.com / password123
-          </p>
-        </div>
-
-        <div style={{ marginTop: "20px", textAlign: "center", borderTop: "1px solid #eee", paddingTop: "20px" }}>
-          <p style={{ margin: 0, fontSize: "14px" }}>
-            Don't have an account?{" "}
-            <Link href="/signup" style={{ color: "#0F6B57", textDecoration: "none", fontWeight: "500" }}>
-              Sign up
-            </Link>
-          </p>
-        </div>
       </div>
-    </div>
+    </main>
   );
 }
