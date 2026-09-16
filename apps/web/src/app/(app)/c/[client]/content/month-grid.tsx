@@ -9,7 +9,7 @@ import {
 } from "@sp/core";
 import type { PostWithVariants } from "@sp/db";
 import Link from "next/link";
-import { PLATFORM_SHORT, POST_STATUS_TONE } from "@/lib/labels";
+import { PLATFORM_SHORT } from "@/lib/labels";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

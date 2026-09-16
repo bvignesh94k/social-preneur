@@ -2,6 +2,8 @@ export * from "./brand/brand-card";
 export * from "./brand/website-analysis";
 export * from "./errors";
 export * from "./claude";
+export * from "./content/captions";
+export * from "./content/ideas";
 export * from "./gemini";
 export * from "./provider";
 export * from "./website/crawl";
