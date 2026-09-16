@@ -17,7 +17,8 @@ interface SetupStep {
 }
 
 export default async function ClientOverviewPage({ params }: PageProps<"/c/[client]">) {
-  const { client, members, brandReady, can } = await getClientOverview((await params).client);
+  const { client, members, brandReady, hasSocialAccounts, hasContentMix, hasAnyPost, can } =
+    await getClientOverview((await params).client);
 
   const steps: SetupStep[] = [
     { label: "Client added", status: "done" },
@@ -26,9 +27,21 @@ export default async function ClientOverviewPage({ params }: PageProps<"/c/[clie
       status: brandReady ? "done" : "todo",
       href: `/c/${client.slug}/brand`,
     },
-    { label: "Social accounts connected", status: "soon" },
-    { label: "Content strategy and monthly mix", status: "soon" },
-    { label: "First content calendar", status: "soon" },
+    {
+      label: "Social accounts registered",
+      status: !can.viewAccounts ? "soon" : hasSocialAccounts ? "done" : "todo",
+      href: can.viewAccounts ? `/c/${client.slug}/accounts` : undefined,
+    },
+    {
+      label: "Content strategy and monthly mix",
+      status: !can.viewStrategy ? "soon" : hasContentMix ? "done" : "todo",
+      href: can.viewStrategy ? `/c/${client.slug}/content` : undefined,
+    },
+    {
+      label: "First content calendar",
+      status: !can.viewCalendar ? "soon" : hasAnyPost ? "done" : "todo",
+      href: can.viewCalendar ? `/c/${client.slug}/content` : undefined,
+    },
   ];
 
   return (

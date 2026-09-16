@@ -158,6 +158,22 @@ export async function listIdeas(db: Database, scope: ClientScope, status?: IdeaS
     .orderBy(desc(ideas.createdAt));
 }
 
+// Cheap existence checks for the setup checklist. Whether a real row exists,
+// not whether the defaults happen to fill in for one.
+export async function hasContentMix(db: Database, scope: ClientScope): Promise<boolean> {
+  const [row] = await db
+    .select({ category: contentMix.category })
+    .from(contentMix)
+    .where(eq(contentMix.clientId, scope.clientId))
+    .limit(1);
+  return row !== undefined;
+}
+
+export async function hasAnyPost(db: Database, scope: ClientScope): Promise<boolean> {
+  const [row] = await db.select({ id: posts.id }).from(posts).where(eq(posts.clientId, scope.clientId)).limit(1);
+  return row !== undefined;
+}
+
 export async function getContentMix(
   db: Database,
   scope: ClientScope,

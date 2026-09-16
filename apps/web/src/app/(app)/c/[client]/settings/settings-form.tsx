@@ -15,16 +15,36 @@ export interface ClientSettingsValues {
 
 // Grouped by region so the client's customers can be found by where they are,
 // not by memorising an IANA identifier.
-function timeZoneOptions(): { region: string; zones: string[] }[] {
+function isValidTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Intl.supportedValuesOf("timeZone") is not the full picture: different ICU
+// builds disagree on which identifier is "canonical" for a given zone, so a
+// real, correctly resolving name like Asia/Kolkata can be missing from it
+// while a formatter still accepts and resolves it correctly. This always
+// includes the app's own default and whatever the client is already set to,
+// so the dropdown never silently mismatches what is actually stored.
+function timeZoneOptions(currentValue: string): { region: string; zones: string[] }[] {
   let zones: string[];
   try {
     zones = Intl.supportedValuesOf("timeZone");
   } catch {
-    zones = ["Asia/Kolkata", "UTC"];
+    zones = [];
+  }
+
+  const zoneSet = new Set(zones);
+  for (const zone of ["Asia/Kolkata", currentValue]) {
+    if (zone && isValidTimeZone(zone)) zoneSet.add(zone);
   }
 
   const groups = new Map<string, string[]>();
-  for (const zone of zones) {
+  for (const zone of zoneSet) {
     const region = zone.split("/")[0] ?? "Other";
     const list = groups.get(region) ?? [];
     list.push(zone);
@@ -50,7 +70,7 @@ function currentOffset(zone: string): string {
 export function SettingsForm({ slug, values }: { slug: string; values: ClientSettingsValues }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateClientSettingsAction, undefined);
   const [timezone, setTimezone] = useState(values.timezone);
-  const groups = useMemo(() => timeZoneOptions(), []);
+  const groups = useMemo(() => timeZoneOptions(values.timezone), [values.timezone]);
   const initial = { ...values, ...state?.values };
 
   return (

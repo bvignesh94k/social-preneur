@@ -67,14 +67,23 @@ export interface ClientSettingsInput {
   country?: string;
 }
 
-// Every timezone actually reported by the runtime. Different clients often have
-// customers in a different timezone from the agency, and every scheduled post
-// must fire at the wall clock time chosen for that client, not for the agency.
+// Different clients often have customers in a different timezone from the
+// agency, and every scheduled post must fire at the wall clock time chosen for
+// that client, not for the agency.
+//
+// This validates by asking the runtime to actually construct a formatter for
+// the zone, rather than checking Intl.supportedValuesOf("timeZone"). The two
+// are not the same thing: ICU builds vary in which name they treat as the
+// canonical entry for a given zone, so a real, correctly behaving identifier
+// like "Asia/Kolkata" can be entirely absent from supportedValuesOf() while
+// still resolving correctly, and rejecting it here would corrupt every client
+// that still has the schema default set.
 export function isKnownTimeZone(value: string): boolean {
   try {
-    return Intl.supportedValuesOf("timeZone").includes(value);
-  } catch {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
     return true;
+  } catch {
+    return false;
   }
 }
 
