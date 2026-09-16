@@ -59,6 +59,74 @@ export async function createClient(db: Database, actor: Actor, input: NewClientI
   });
 }
 
+export interface ClientSettingsInput {
+  name: string;
+  website?: string | null;
+  industry?: string | null;
+  timezone: string;
+  country?: string;
+}
+
+// Every timezone actually reported by the runtime. Different clients often have
+// customers in a different timezone from the agency, and every scheduled post
+// must fire at the wall clock time chosen for that client, not for the agency.
+export function isKnownTimeZone(value: string): boolean {
+  try {
+    return Intl.supportedValuesOf("timeZone").includes(value);
+  } catch {
+    return true;
+  }
+}
+
+export async function updateClientSettings(
+  db: Database,
+  actor: Actor,
+  clientId: string,
+  input: ClientSettingsInput,
+): Promise<Client> {
+  const scope = await requireClientAccess(db, actor, "client.assignTeam", clientId);
+
+  const name = input.name.trim();
+  if (!name) throw new InvalidInputError("Client name is required.");
+  if (!isKnownTimeZone(input.timezone)) {
+    throw new InvalidInputError("Pick a timezone from the list, for example Asia/Kolkata or America/New_York.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(clients).where(eq(clients.id, scope.clientId)).limit(1);
+    if (!before) throw new NotFoundError("Client");
+
+    const [row] = await tx
+      .update(clients)
+      .set({
+        name,
+        website: input.website?.trim() || null,
+        industry: input.industry?.trim() || null,
+        timezone: input.timezone,
+        country: input.country?.trim() || before.country,
+      })
+      .where(eq(clients.id, scope.clientId))
+      .returning();
+    if (!row) throw new Error("Client update returned no row");
+
+    if (before.timezone !== row.timezone) {
+      await recordAudit(tx, {
+        agencyId: scope.agencyId,
+        clientId: row.id,
+        actorType: "user",
+        actorId: actor.userId,
+        action: "client.timezone_changed",
+        objectType: "client",
+        objectId: row.id,
+        before: { timezone: before.timezone },
+        after: { timezone: row.timezone },
+      });
+    }
+
+    return row;
+  });
+}
+
 export async function listClientsForActor(db: Database, actor: Actor): Promise<Client[]> {
   if (isAllowed(actor, "client.view", { clientRole: null })) {
     return db

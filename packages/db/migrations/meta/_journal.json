@@ -50,6 +50,13 @@
       "when": 1789554330307,
       "tag": "0006_bizarre_victor_mancha",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789583663892,
+      "tag": "0007_fair_the_twelve",
+      "breakpoints": true
     }
   ]
 }

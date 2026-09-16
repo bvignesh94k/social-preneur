@@ -7,10 +7,14 @@ export function ClientTabs({
   slug,
   showBrand,
   showContent,
+  showAccounts,
+  showSettings,
 }: {
   slug: string;
   showBrand: boolean;
   showContent: boolean;
+  showAccounts: boolean;
+  showSettings: boolean;
 }) {
   const pathname = usePathname();
   const base = `/c/${slug}`;
@@ -19,6 +23,12 @@ export function ClientTabs({
     ...(showBrand ? [{ href: `${base}/brand`, label: "Brand Brain", active: pathname.startsWith(`${base}/brand`) }] : []),
     ...(showContent
       ? [{ href: `${base}/content`, label: "Content", active: pathname.startsWith(`${base}/content`) }]
+      : []),
+    ...(showAccounts
+      ? [{ href: `${base}/accounts`, label: "Accounts", active: pathname.startsWith(`${base}/accounts`) }]
+      : []),
+    ...(showSettings
+      ? [{ href: `${base}/settings`, label: "Settings", active: pathname.startsWith(`${base}/settings`) }]
       : []),
   ];
 

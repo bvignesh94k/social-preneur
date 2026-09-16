@@ -1,4 +1,5 @@
 export * from "./access";
+export * from "./accounts";
 export * from "./agencies";
 export * from "./audit";
 export * from "./bootstrap";

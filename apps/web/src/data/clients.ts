@@ -85,6 +85,8 @@ export const getClientOverview = cache(async (slug: string) => {
       pausePublishing: isAllowed(actor, "publishing.pauseClient", target),
       viewBrand: canViewBrand,
       viewCalendar: isAllowed(actor, "calendar.view", target),
+      manageSettings: isAllowed(actor, "client.assignTeam", target),
+      manageAccounts: isAllowed(actor, "accounts.connect", target),
     },
   };
 });
