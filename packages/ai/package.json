@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
     "@sp/core": "workspace:*",
     "node-html-parser": "^9.0.4",
     "undici": "^8.10.2",

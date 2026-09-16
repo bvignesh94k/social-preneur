@@ -8,6 +8,10 @@ const schema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   // Enables the one-time /setup page while no agency exists.
   SETUP_TOKEN: z.string().trim().min(24, "SETUP_TOKEN must be at least 24 characters.").optional(),
+  AI_PROVIDER: z.enum(["claude", "gemini"]).default("claude"),
+  ANTHROPIC_API_KEY: z.string().trim().optional(),
+  CLAUDE_MODEL: z.string().trim().default("claude-opus-5"),
+  CLAUDE_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
   GEMINI_API_KEY: z.string().trim().optional(),
   GEMINI_MODEL: z.string().trim().default("gemini-3.6-flash"),
   GEMINI_FALLBACK_MODELS: z

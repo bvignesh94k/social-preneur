@@ -1,6 +1,7 @@
 import "server-only";
 import {
   AiError,
+  createClaudeProvider,
   createGeminiProvider,
   type AiProvider,
   type GenerateObjectRequest,
@@ -13,11 +14,18 @@ import { env } from "@/lib/env";
 let provider: AiProvider | undefined;
 
 export function getAiProvider(): AiProvider {
-  provider ??= createGeminiProvider({
-    apiKey: env.GEMINI_API_KEY,
-    model: env.GEMINI_MODEL,
-    fallbackModels: env.GEMINI_FALLBACK_MODELS,
-  });
+  provider ??=
+    env.AI_PROVIDER === "gemini"
+      ? createGeminiProvider({
+          apiKey: env.GEMINI_API_KEY,
+          model: env.GEMINI_MODEL,
+          fallbackModels: env.GEMINI_FALLBACK_MODELS,
+        })
+      : createClaudeProvider({
+          apiKey: env.ANTHROPIC_API_KEY,
+          model: env.CLAUDE_MODEL,
+          effort: env.CLAUDE_EFFORT,
+        });
   return provider;
 }
 
