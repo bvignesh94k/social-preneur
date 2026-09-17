@@ -23,6 +23,11 @@ const schema = z.object({
         .map((model) => model.trim())
         .filter(Boolean),
     ),
+  // Encrypts stored OAuth tokens at rest. Generate with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+  TOKEN_ENCRYPTION_KEY: z.string().trim().optional(),
+  LINKEDIN_CLIENT_ID: z.string().trim().optional(),
+  LINKEDIN_CLIENT_SECRET: z.string().trim().optional(),
 });
 
 export const env = schema.parse(process.env);

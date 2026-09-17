@@ -57,6 +57,13 @@
       "when": 1789583663892,
       "tag": "0007_fair_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789619091769,
+      "tag": "0008_giant_spyke",
+      "breakpoints": true
     }
   ]
 }

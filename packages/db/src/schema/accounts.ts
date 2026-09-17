@@ -1,7 +1,7 @@
 import { SOCIAL_PLATFORMS } from "@sp/core";
 import { foreignKey, index, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./auth";
-import { createdAt, id, updatedAt } from "./columns";
+import { createdAt, id, textList, updatedAt } from "./columns";
 import { clients } from "./tenancy";
 
 export const socialAccountPlatform = pgEnum("social_account_platform", SOCIAL_PLATFORMS);
@@ -26,9 +26,15 @@ export const socialAccounts = pgTable(
     connectionMode: accountConnectionMode("connection_mode").notNull().default("assisted"),
     health: accountHealth("health").notNull().default("ok"),
     healthNote: text("health_note"),
-    // Filled in once real OAuth is wired up for that platform. Null until then.
+    // Set once a real OAuth token is stored for this platform. Null in assisted mode.
     externalAccountId: text("external_account_id"),
     connectedAt: timestamp("connected_at", { withTimezone: true }),
+    // AES-256-GCM ciphertext (iv:tag:data, base64), never the raw token. Decrypted
+    // only at the moment a call to that platform is actually made.
+    accessTokenEncrypted: text("access_token_encrypted"),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    grantedScopes: textList("granted_scopes"),
     createdBy: text("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

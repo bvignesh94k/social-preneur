@@ -1,7 +1,13 @@
 "use server";
 
 import { ForbiddenError, InvalidInputError, NotFoundError, SOCIAL_PLATFORMS, type SocialPlatform } from "@sp/core";
-import { addSocialAccount, removeSocialAccount, requireClientBySlug, updateSocialAccount } from "@sp/db";
+import {
+  addSocialAccount,
+  disconnectOAuthAccount,
+  removeSocialAccount,
+  requireClientBySlug,
+  updateSocialAccount,
+} from "@sp/db";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import type { FormState } from "@/lib/form-state";
@@ -63,6 +69,20 @@ export async function updateSocialAccountAction(_prev: FormState, formData: Form
     });
   } catch (error) {
     return failure(error, values);
+  }
+
+  revalidatePath(`/c/${slug}/accounts`);
+  return { ok: true };
+}
+
+export async function disconnectOAuthAccountAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const slug = text(formData, "slug");
+
+  try {
+    const { actor, clientId } = await clientIdFor(slug);
+    await disconnectOAuthAccount(await getDb(), actor, clientId, platform(formData));
+  } catch (error) {
+    return failure(error, Object.fromEntries(formData.entries()) as Record<string, string>);
   }
 
   revalidatePath(`/c/${slug}/accounts`);
