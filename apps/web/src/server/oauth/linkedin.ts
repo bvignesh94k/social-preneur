@@ -15,7 +15,9 @@ const LINKEDIN_VERSION = "202609";
 // to pages it manages directly. Until that product is granted, LinkedIn's own
 // authorize screen will refuse these scopes; nothing here can route around
 // that; it is not a bug in this code.
-export const LINKEDIN_SCOPES = ["openid", "profile", "w_organization_social", "rw_organization_admin"] as const;
+// No openid/profile: nothing here reads member identity, and those scopes need
+// the Sign In product, which cannot share an app with Community Management API.
+export const LINKEDIN_SCOPES = ["w_organization_social", "rw_organization_admin"] as const;
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
