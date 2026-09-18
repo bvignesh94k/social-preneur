@@ -51,7 +51,12 @@ export default function ClientsPage() {
 
   return (
     <main style={{ padding: "40px 20px", maxWidth: "600px", margin: "0 auto" }}>
-      <h1>Manage Clients</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h1>Manage Clients</h1>
+        <a href="/dashboard" style={{ color: "#0F6B57", textDecoration: "none", fontSize: "14px", fontWeight: 600 }}>
+          Back to Dashboard
+        </a>
+      </div>
 
       <form onSubmit={handleCreateClient} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
