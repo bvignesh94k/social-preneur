@@ -2,35 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "social-preneur",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
       "port": 3000
-    },
-    {
-      "name": "socialpreneur-db",
-      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": [
-        "C:\\dev\\socialpreneur\\packages\\db\\node_modules\\@electric-sql\\pglite-socket\\dist\\scripts\\server.js",
-        "--db=C:/dev/socialpreneur/.data/pglite",
-        "--port=5433",
-        "--max-connections=10"
-      ],
-      "port": 5433,
-      "autoPort": false
-    },
-    {
-      "name": "socialpreneur-web",
-      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": [
-        "C:\\dev\\socialpreneur\\apps\\web\\node_modules\\next\\dist\\bin\\next",
-        "dev",
-        "C:\\dev\\socialpreneur\\apps\\web",
-        "--port",
-        "3100"
-      ],
-      "port": 3100,
-      "autoPort": false
     }
   ]
 }
