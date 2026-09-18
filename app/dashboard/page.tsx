@@ -21,8 +21,8 @@ const setupSteps = [
   },
   {
     title: "Clients and brand profiles",
-    state: "Next to build",
-    detail: "Needs the database first. Then all 10 clients live here with the switcher.",
+    state: "In Progress",
+    detail: "Manage your clients and their social media pages.",
   },
 ];
 
