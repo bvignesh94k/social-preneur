@@ -1,0 +1,1 @@
+ALTER TABLE "post_variants" ADD COLUMN "has_media" boolean DEFAULT false NOT NULL;

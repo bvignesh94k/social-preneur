@@ -1,0 +1,35 @@
+{
+  "name": "@sp/db",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./testing": "./src/testing.ts",
+    "./pg": "./src/pg.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx --env-file=../../apps/web/.env.local scripts/migrate.ts",
+    "migrate:ci": "tsx scripts/migrate.ts",
+    "dev": "pglite-server --db=../../.data/pglite --port=5433 --max-connections=10"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
+    "@sp/core": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.23.0",
+    "uuidv7": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  }
+}

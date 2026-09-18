@@ -1,0 +1,925 @@
+<title>Social Preneur Blueprint</title>
+<meta name="description" content="Architecture blueprint for a multi-client AI social media management and automation platform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Schibsted+Grotesk:wght@600;700;800&display=swap">
+<style>
+:root{
+  --ground:#F4F6F5; --surface:#FFFFFF; --sunk:#EAEFEC; --ink:#17201D; --muted:#56635E; --line:#D4DCD8;
+  --accent:#0F6B57; --accent-soft:#DDEFE8; --accent-ink:#0B4F40;
+  --warn:#8A5A10; --warn-soft:#F7EBD6; --crit:#A8392B; --crit-soft:#F6E0DC; --info:#2D5A87; --info-soft:#E1EAF4;
+  --display:"Schibsted Grotesk","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1412; --surface:#161D1A; --sunk:#1C2521; --ink:#E2E9E6; --muted:#9AA8A2; --line:#2B3632;
+    --accent:#52C2A3; --accent-soft:#163A30; --accent-ink:#8FDCC6;
+    --warn:#E3AE5C; --warn-soft:#352918; --crit:#EF8C7E; --crit-soft:#3B201C; --info:#8DB6E0; --info-soft:#1B2A3A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1412; --surface:#161D1A; --sunk:#1C2521; --ink:#E2E9E6; --muted:#9AA8A2; --line:#2B3632;
+  --accent:#52C2A3; --accent-soft:#163A30; --accent-ink:#8FDCC6;
+  --warn:#E3AE5C; --warn-soft:#352918; --crit:#EF8C7E; --crit-soft:#3B201C; --info:#8DB6E0; --info-soft:#1B2A3A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.6;padding:0 20px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.shell{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;padding-block:40px 96px}
+@media (max-width:980px){.shell{grid-template-columns:minmax(0,1fr);gap:24px;padding-block:24px 64px}}
+
+/* index */
+.index{position:sticky;top:24px;align-self:start;font-size:13.5px}
+.index .brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.slot{width:22px;height:16px;border:2px solid var(--accent);border-top-width:6px;border-radius:2px}
+.index ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:ix}
+.index li a{display:grid;grid-template-columns:26px 1fr;padding:5px 8px;border-radius:6px;color:var(--muted);text-decoration:none}
+.index li a:hover{background:var(--sunk);color:var(--ink)}
+.index li a span:first-child{font-family:var(--mono);font-size:12px;padding-top:1px}
+.index .sep{height:1px;background:var(--line);margin:8px 0}
+@media (max-width:980px){
+  .index{position:static}
+  .index ol{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+}
+
+/* masthead */
+main{min-width:0;max-width:880px}
+.mast{display:grid;gap:14px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,5vw,50px);line-height:1.04;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.lede{font-size:18px;color:var(--muted);max-width:64ch;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.flow .arrow{color:var(--muted);font-size:12px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;line-height:1;padding:5px 9px;border-radius:999px;background:var(--sunk);color:var(--ink);white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.chip.ok{background:var(--accent-soft);color:var(--accent-ink)} .chip.ok::before{background:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.warn::before{background:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)} .chip.crit::before{background:var(--crit)}
+.chip.info{background:var(--info-soft);color:var(--info)} .chip.info::before{background:var(--info)}
+.chip.plain::before{display:none}
+
+/* sections */
+section{padding-block:44px 8px;scroll-margin-top:16px}
+section + section{border-top:1px solid var(--line)}
+h2{font-family:var(--display);font-weight:700;font-size:29px;letter-spacing:-.018em;line-height:1.15;margin:0 0 6px;text-wrap:balance;display:flex;gap:14px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--accent);letter-spacing:0}
+.sub{color:var(--muted);margin:0 0 22px;max-width:68ch}
+h3{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em;margin:32px 0 10px;text-wrap:balance}
+h4{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+p,ul,ol.steps{max-width:70ch}
+ul{padding-left:20px}
+li{margin:3px 0}
+code,.mono{font-family:var(--mono);font-size:.88em}
+p code,li code,td code{background:var(--sunk);padding:1px 5px;border-radius:4px}
+
+/* callouts */
+.note{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 18px;margin:18px 0;max-width:none}
+.note > :first-child{margin-top:0} .note > :last-child{margin-bottom:0}
+.note.warn{background:var(--warn-soft);border-color:transparent}
+.note.crit{background:var(--crit-soft);border-color:transparent}
+.note.ok{background:var(--accent-soft);border-color:transparent}
+.note .tag{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;display:block;margin-bottom:4px}
+.note.warn .tag{color:var(--warn)} .note.crit .tag{color:var(--crit)} .note.ok .tag{color:var(--accent-ink)}
+
+/* decision list */
+.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:18px 0}
+.dec{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;align-content:start}
+.dec b{font-family:var(--display);font-size:15.5px;font-weight:700;letter-spacing:-.005em}
+.dec span{font-size:14px;color:var(--muted)}
+.dec .why{font-family:var(--mono);font-size:11.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+
+/* tables */
+.scroll{overflow-x:auto;margin:14px 0 20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.8px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--sunk);white-space:nowrap}
+td.k{font-family:var(--mono);font-size:12.8px;white-space:nowrap;color:var(--accent-ink);font-weight:500}
+td.c{font-family:var(--mono);font-size:12.3px;color:var(--ink);min-width:260px}
+td.s{color:var(--muted);min-width:180px}
+tr.group td{background:var(--sunk);font-family:var(--display);font-weight:700;font-size:13.5px;color:var(--ink);padding:7px 12px}
+.matrix td{text-align:center;font-size:13px;white-space:nowrap}
+.matrix td:first-child{text-align:left;white-space:normal;min-width:190px}
+.y{color:var(--accent);font-weight:600}
+.a{color:var(--info);font-weight:500}
+.nn{color:var(--line);font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+
+/* code blocks */
+pre.code{font-family:var(--mono);font-size:12.8px;line-height:1.55;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;margin:14px 0 20px;color:var(--ink)}
+pre.code .cm{color:var(--muted)}
+pre.code .hl{color:var(--accent-ink);font-weight:500}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;margin:14px 0 20px}
+pre.mermaid{margin:0;display:flex;justify-content:center}
+
+/* phases */
+.phases{display:grid;gap:0;margin:18px 0;border-left:2px solid var(--line)}
+.phase{position:relative;padding:4px 0 22px 24px}
+.phase::before{content:"";position:absolute;left:-7px;top:10px;width:12px;height:12px;border-radius:50%;background:var(--ground);border:2px solid var(--accent)}
+.phase header{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}
+.phase header b{font-family:var(--display);font-size:17px;font-weight:700}
+.phase header .mono{color:var(--muted);font-size:12px}
+.phase p{margin:4px 0}
+.phase .exit{font-size:13.5px;color:var(--muted)}
+.phase .exit strong{color:var(--accent-ink);font-weight:600}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 28px}
+.two > div > h4:first-child{margin-top:6px}
+ol.steps{padding-left:22px}
+ol.steps li{padding-left:4px;margin:5px 0}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px;align-content:start}
+.stage .cost{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stage .cost small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0}
+.stage .who{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.stage ul{margin:0;font-size:13.5px;padding-left:18px}
+.questions li{margin:10px 0}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+</style>
+
+<div class="shell">
+<nav class="index" aria-label="Blueprint sections">
+  <div class="brand"><span class="slot" aria-hidden="true"></span>Social Preneur</div>
+  <ol>
+    <li><a href="#review"><span>R</span><span>Brief review</span></a></li>
+    <li><a href="#reality"><span>!</span><span>Platform reality check</span></a></li>
+    <li class="sep" aria-hidden="true"></li>
+    <li><a href="#architecture"><span>01</span><span>Product architecture</span></a></li>
+    <li><a href="#mvp"><span>02</span><span>MVP feature map</span></a></li>
+    <li><a href="#flows"><span>03</span><span>User flows</span></a></li>
+    <li><a href="#schema"><span>04</span><span>Database schema</span></a></li>
+    <li><a href="#permissions"><span>05</span><span>Permission model</span></a></li>
+    <li><a href="#routes"><span>06</span><span>Pages and routes</span></a></li>
+    <li><a href="#integrations"><span>07</span><span>Integration architecture</span></a></li>
+    <li><a href="#ai"><span>08</span><span>AI architecture</span></a></li>
+    <li><a href="#publishing"><span>09</span><span>Scheduling and publishing</span></a></li>
+    <li><a href="#stack"><span>10</span><span>Technology stack</span></a></li>
+    <li><a href="#deploy"><span>11</span><span>Free-first deployment</span></a></li>
+    <li><a href="#phases"><span>12</span><span>Development phases</span></a></li>
+    <li class="sep" aria-hidden="true"></li>
+    <li><a href="#questions"><span>✓</span><span>Confirmed decisions</span></a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="mast">
+  <div class="eyebrow">Product blueprint · v0.2 · decisions confirmed 14 Sep 2026</div>
+  <h1>Social Preneur: one workspace where every client's posts are planned, approved and dispatched</h1>
+  <p class="lede">Architecture for an AI-assisted, multi-client social media operations platform, built for VTurnU Digital Solutions LLP. Design is complete and decisions are confirmed; Phase 0 is next.</p>
+  <div class="meta"><span><b>App:</b> app.socialpreneur.in</span><span><b>Scale target:</b> 10 to 100+ clients, same architecture</span><span><b>Languages:</b> English, Tamil</span><span><b>Platforms:</b> LinkedIn, Facebook, Instagram, X, Threads, Pinterest</span><span><b>API policy:</b> free official APIs only</span></div>
+  <div class="flow" aria-label="Post lifecycle">
+    <span class="chip plain">Idea</span><span class="arrow">→</span>
+    <span class="chip plain">Draft</span><span class="arrow">→</span>
+    <span class="chip info">Design</span><span class="arrow">→</span>
+    <span class="chip info">Internal review</span><span class="arrow">→</span>
+    <span class="chip warn">Client review</span><span class="arrow">→</span>
+    <span class="chip ok">Approved</span><span class="arrow">→</span>
+    <span class="chip ok">Scheduled</span><span class="arrow">→</span>
+    <span class="chip ok">Published</span>
+  </div>
+</header>
+
+<!-- REVIEW -->
+<section id="review">
+  <h2><span class="n">R</span>Where this blueprint departs from the brief</h2>
+  <p class="sub">You asked for better solutions where they exist. These are the changes I recommend. Each one is already built into the sections that follow.</p>
+  <div class="decisions">
+    <div class="dec"><span class="why">Less rework</span><b>Two-stage client approval</b><span>Client approves the month's plan (topics and dates) first, then the finished posts. Rejected ideas cost minutes, not finished designs.</span></div>
+    <div class="dec"><span class="why">Honest automation</span><b>Assisted publishing mode</b><span>For any account without a working API (X beyond its free monthly cap, apps still in review, unsupported formats), the post becomes "Ready to post manually" with copy buttons, creative download and a reminder. Never fake auto-posting.</span></div>
+    <div class="dec"><span class="why">No invented claims</span><b>Brand Facts ledger</b><span>Every number, certification, award or testimonial lives as a fact with a source and a Verified flag. AI may only state verified facts; anything else is flagged.</span></div>
+    <div class="dec"><span class="why">Accuracy and cost</span><b>Code plans, AI writes</b><span>The calendar generator allocates slots, content mix percentages and spacing in plain code, then AI fills ideas into slots. Mix targets are hit exactly and the health score is deterministic.</span></div>
+    <div class="dec"><span class="why">One source of truth</span><b>No separate CalendarEntries table</b><span>The calendar is a view over posts. A planned slot is a post in Idea status with a date. Two tables for the same thing would drift apart.</span></div>
+    <div class="dec"><span class="why">Publish what was approved</span><b>Approval sealed to a content hash</b><span>Approval records the exact version and a hash of caption, media and platform variants. Any edit after approval reopens review before publishing.</span></div>
+    <div class="dec"><span class="why">Never double post</span><b>"Needs verification" state</b><span>If a platform call times out after sending, the worker checks the account's recent posts before retrying. Blind retries are what cause duplicate posts.</span></div>
+    <div class="dec"><span class="why">Avoid stale posts</span><b>Late publish window</b><span>If a job misses its time by more than 3 hours (configurable; special-day posts expire at the end of that day), it stops and asks. No "Happy Monday" on Wednesday.</span></div>
+    <div class="dec"><span class="why">Crisis control</span><b>Pause publishing</b><span>One switch per client and one for the agency halts every queued job instantly, for a PR crisis or a national tragedy.</span></div>
+    <div class="dec"><span class="why">Client adoption</span><b>Approval links, no password</b><span>Clients review through expiring, single-client magic links on mobile. A full client login stays available for reports and history.</span></div>
+    <div class="dec"><span class="why">Least privilege</span><b>Client role split in two</b><span>Client Approver (can approve) and Client Viewer (can view and comment). Real client teams have both.</span></div>
+    <div class="dec"><span class="why">Client separation</span><b>Explicit account-to-client assignment</b><span>One Facebook or LinkedIn login often exposes pages from many clients. Each page must be assigned to one client by a person; the app never guesses.</span></div>
+    <div class="dec"><span class="why">Truthful analytics</span><b>Empty means unknown, not zero</b><span>Metrics a platform does not provide are stored as empty, never 0, with the raw payload kept. Charts say "Not provided by LinkedIn" instead of a misleading zero.</span></div>
+    <div class="dec"><span class="why">Moving festivals</span><b>Special days as yearly occurrences</b><span>Diwali, Holi, Eid and Pongal move each year. Days are stored once, with dated occurrences per year; moon-dependent dates are marked tentative.</span></div>
+    <div class="dec"><span class="why">Longest lead time</span><b>Start platform reviews in week 1</b><span>Meta, LinkedIn and Pinterest app reviews take weeks and need a live privacy policy and demo videos. They gate publishing, so they start before most code.</span></div>
+    <div class="dec"><span class="why">Right-sized</span><b>Modular monolith plus one worker</b><span>One Next.js app and one background worker sharing typed packages. Microservices would add cost and failure points without benefit below thousands of clients.</span></div>
+    <div class="dec"><span class="why">House style</span><b>Em dash sanitizer</b><span>A final deterministic pass removes em dashes from every AI output (captions, ideas, briefs, reports) and a test keeps it that way.</span></div>
+    <div class="dec"><span class="why">Data safety</span><b>Backups from day one</b><span>Free database tiers have little or no point-in-time recovery. A nightly encrypted dump goes to object storage.</span></div>
+  </div>
+</section>
+
+<!-- REALITY -->
+<section id="reality">
+  <h2><span class="n">!</span>Platform reality check</h2>
+  <p class="sub">A correction to my earlier short answer: not every platform is free and open for automated posting. These constraints shape the plan more than any code choice.</p>
+  <div class="note warn"><span class="tag">X (Twitter)</span><p>X's free access, where still offered, has a small monthly post cap shared by every client on the app and almost no analytics. X pricing has changed several times, so the real cap is confirmed at registration. <b>Decision (free APIs only):</b> use free X access while it covers volume. A cap counter tracks posts per month; anything beyond the cap, or everything if free access is unavailable, goes to Assisted mode. At 10 clients posting 3 times a week (about 130 posts a month) this is expected to fit; the ceiling is likely around 30 to 40 active X clients.</p></div>
+  <div class="note warn"><span class="tag">LinkedIn company pages</span><p>Posting to company pages needs LinkedIn's Community Management API. Access requires an application reviewed by LinkedIn, tied to a registered legal business, and that API product must sit alone on its developer app. The person connecting must hold a page admin role that allows posting.</p></div>
+  <div class="note warn"><span class="tag">Meta: Facebook, Instagram, Threads</span><p>Needs a Meta developer app, Business Verification and App Review for page posting, Instagram publishing and insights permissions. Instagram publishing only works for Business or Creator accounts, needs media at a public URL (JPEG for images), and has a daily cap on API-published posts per account. Threads has its own API, login and review.</p></div>
+  <div class="note warn"><span class="tag">Pinterest</span><p>New apps start on Trial access with restrictions. Standard access requires an application with a demo video. Every Pin needs an image or video and a board.</p></div>
+  <div class="note ok"><span class="tag">What this means for the plan</span><p>Every API used is free: Meta (Facebook, Instagram, Threads), LinkedIn and Pinterest charge nothing for API access, and X runs on free access with an Assisted fallback. Phase 0 includes registering the apps under VTurnU Digital Solutions LLP, publishing a privacy policy, terms and data deletion page on socialpreneur.in, and submitting reviews. The product is designed so every platform works in Assisted mode from day one and switches to API publishing account by account as approvals land. Nothing in the UI claims automation that is not actually running.</p></div>
+</section>
+
+<!-- 01 ARCHITECTURE -->
+<section id="architecture">
+  <h2><span class="n">01</span>Product architecture</h2>
+  <p class="sub">A modular monolith: one web app and one background worker, both built from the same typed domain packages. Every boundary that may need to scale or change vendor (queue, storage, AI provider, social platform) sits behind an interface.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph People
+    T[Agency team]
+    CL[Client approvers]
+  end
+  subgraph Cloudflare
+    W[Web app: Next.js]
+    WK[Worker: cron and queue consumer]
+    Q[(Job queue)]
+    R2[(R2 media storage)]
+  end
+  subgraph Shared packages
+    D[Domain services and permissions]
+    AI[AI gateway]
+    AD[Platform adapters]
+  end
+  DB[(PostgreSQL with pgvector)]
+  LLM[AI providers]
+  API[Official social APIs]
+  T --> W
+  CL --> W
+  W --> D
+  WK --> D
+  D --> DB
+  W -- signed uploads --> R2
+  D --> AI --> LLM
+  WK --> Q --> WK
+  D --> AD --> API
+  API -. fetches media .-> R2
+</pre>
+  </div>
+
+  <h3>Modules and their responsibility</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Module</th><th>Owns</th><th>Talks to</th></tr></thead>
+    <tbody>
+      <tr><td class="k">identity</td><td>Agencies, users, sessions, invitations, roles, approval links</td><td>db, audit</td></tr>
+      <tr><td class="k">workspace</td><td>Clients, client members, client settings, pause switch, client health</td><td>identity, db</td></tr>
+      <tr><td class="k">brand</td><td>Brand profile, products, services, personas, facts, rules, documents, website sources, Brand Card</td><td>ai, media</td></tr>
+      <tr><td class="k">planning</td><td>Content categories, strategies and mix, templates, campaigns, special days, calendar plans, slotting algorithm, health score</td><td>brand, ai, content</td></tr>
+      <tr><td class="k">content</td><td>Ideas, posts, versions, platform variants, creative briefs, validation, similarity, repurposing</td><td>brand, ai, media</td></tr>
+      <tr><td class="k">workflow</td><td>Status machine, approvals, comments, tasks, notifications</td><td>content, identity</td></tr>
+      <tr><td class="k">media</td><td>Asset library, upload URLs, media specs per platform, client-ownership guard</td><td>storage</td></tr>
+      <tr><td class="k">integrations</td><td>OAuth, token vault, account assignment, health checks, platform adapters</td><td>platform APIs</td></tr>
+      <tr><td class="k">publishing</td><td>Preflight, jobs, queue, attempts, retries, reconciliation, assisted mode</td><td>integrations, workflow</td></tr>
+      <tr><td class="k">analytics</td><td>Metric sync, snapshots, aggregates, insights, monthly reports</td><td>integrations, ai</td></tr>
+      <tr><td class="k">ai</td><td>Provider abstraction, model routing, prompts, context builder, guardrails, usage and budgets</td><td>providers</td></tr>
+      <tr><td class="k">audit</td><td>Append-only event log for every sensitive action</td><td>db</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Repository layout</h3>
+<pre class="code">socialpreneur/
+  apps/
+    web/              <span class="cm"># Next.js App Router: UI, server actions, OAuth callbacks, client portal</span>
+    worker/           <span class="cm"># Cron triggers, queue consumer, token refresh, metric sync, website crawl</span>
+  packages/
+    core/             <span class="cm"># Domain logic, state machines, permission checks. Pure TypeScript, fully unit tested</span>
+    db/               <span class="cm"># Drizzle schema, migrations, client-scoped repositories, seed and demo data</span>
+    integrations/     <span class="cm"># One adapter per platform behind a shared interface</span>
+    ai/               <span class="cm"># Gateway, prompt templates, output schemas, guardrails, evals</span>
+    ui/               <span class="cm"># Design system: tokens, shadcn/ui components, calendar grid</span>
+    config/           <span class="cm"># Environment schema (validated at boot), feature flags</span>
+</pre>
+  <p>Rule that keeps this clean: <code>apps</code> never import each other and never query the database directly. They call <code>core</code> services, which require an authorization context on every call.</p>
+</section>
+
+<!-- 02 MVP -->
+<section id="mvp">
+  <h2><span class="n">02</span>MVP feature map</h2>
+  <p class="sub">Your 18 MVP priorities are all in Version 1. A few cheap items from later sections move forward because they reduce risk. Numbers in brackets refer to sections of your brief.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Area</th><th>Version 1</th><th>Version 1.5</th><th>Later</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Access</td><td>Auth, roles, invitations, client isolation, audit log [4, 54, 56]</td><td>2FA for admins, session management</td><td>SSO, white-label portals</td></tr>
+      <tr><td class="k">Clients</td><td>Workspaces, client switcher, logo identity, pause switch [5, 59, 60]</td><td>Client health score [45]</td><td>Agency SaaS plans, billing</td></tr>
+      <tr><td class="k">Brand Brain</td><td>Profile, products, services, facts ledger, rules, document upload, website analysis v1 [8, 9, 49]</td><td>Learned suggestions from performance, persona builder</td><td>Competitor analysis, social listening</td></tr>
+      <tr><td class="k">Accounts</td><td>OAuth for all six platforms, token vault and refresh, assignment, Integration Health [6, 7]</td><td>Health alerts by email</td><td>Comment and DM management</td></tr>
+      <tr><td class="k">Strategy</td><td>Categories, custom categories, monthly mix, special days database [10, 11, 14]</td><td>Calendar templates [48]</td><td>Trend feeds</td></tr>
+      <tr><td class="k">Ideas</td><td>Idea engine with tone buttons, similarity warnings, content inbox [12, 13, 33, 42]</td><td>Team and client idea submission</td><td>Competitor-inspired ideas</td></tr>
+      <tr><td class="k">Calendar</td><td>Month, week, list views, drag to reschedule, generator, conflict detection, health score [15, 16, 17]</td><td>Day, client-wise and platform-wise views, import from spreadsheet</td><td>Shared public calendar links</td></tr>
+      <tr><td class="k">Content</td><td>Master caption, platform variants, tones, creative brief, design prompt, media library, versions [18 to 22, 25]</td><td>Repurpose engine full set [20], hashtag sets</td><td>AI image and video generation, Canva</td></tr>
+      <tr><td class="k">Workflow</td><td>Status machine, internal and client approvals, comments, approval links, notifications in-app [23, 24, 29]</td><td>Lightweight tasks, team workload [43, 44], bulk actions [47]</td><td>Email and WhatsApp notifications</td></tr>
+      <tr><td class="k">Publishing</td><td>Preflight, queue, retries, duplicate protection, failure explanations, assisted mode, history [26, 27, 28]</td><td>First comment, Instagram stories</td><td>Video-first workflows</td></tr>
+      <tr><td class="k">Analytics</td><td>Metric sync, post and account metrics, basic monthly report with data-sufficiency labels [37, 40]</td><td>AI insights and recommendations [38, 39]</td><td>PDF and slide export, CRM lead tracking</td></tr>
+      <tr><td class="k">Productivity</td><td>Dashboard, Today view, command palette for navigation and create [30, 32, 46]</td><td>Global search [34], AI assistant chat [41], productivity metrics [66], multi-client dashboard filters [31]</td><td>Slack and Teams integration</td></tr>
+      <tr><td class="k">Campaigns</td><td>Basic campaigns and UTM builder, since posts reference them [35, 36]</td><td>Campaign performance roll-ups</td><td>Link shortener with click tracking</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 03 FLOWS -->
+<section id="flows">
+  <h2><span class="n">03</span>User flows</h2>
+  <p class="sub">The monthly cycle is the heartbeat of the product. Every other flow feeds it or recovers from its failures.</p>
+
+  <h3>The monthly cycle</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A[Brand Brain ready] --> B[Generate month plan]
+  B --> C{Plan health acceptable?}
+  C -- No --> B2[Move, replace or regenerate selected slots] --> C
+  C -- Yes --> D[Client approves the plan]
+  D --> E[Write master caption and platform variants]
+  E --> F[Designer works from creative brief]
+  F --> G[Internal review]
+  G --> H[Client reviews finished posts]
+  H -- Changes requested --> E
+  H -- Approved --> I[Schedule, preflight checks run]
+  I --> J[Publish by API or assisted]
+  J --> K[Metrics sync]
+  K --> L[Insights shape next month] --> B
+</pre>
+  </div>
+
+  <div class="two">
+    <div>
+      <h4>Onboarding a new client</h4>
+      <ol class="steps">
+        <li>Add client: name, logo, website, industry, timezone.</li>
+        <li>Paste website URL. Crawler reads up to 30 pages and proposes products, services, FAQs and facts.</li>
+        <li>Review proposals: accept, edit or discard. Nothing enters the Brand Brain unreviewed.</li>
+        <li>Upload brand guidelines and brochures. Extracted facts join the same review queue.</li>
+        <li>Mark facts as verified (certifications, numbers, awards).</li>
+        <li>Add rules: hashtag limit, emoji policy, banned words, weekend posting.</li>
+        <li>Connect accounts, then assign each discovered page to this client.</li>
+        <li>Pick a calendar template or set the content mix.</li>
+        <li>Generate first plan. Invite client approver.</li>
+      </ol>
+    </div>
+    <div>
+      <h4>Producing one post</h4>
+      <ol class="steps">
+        <li>Open a planned slot (status Idea) from the calendar.</li>
+        <li>Generate content: hook, master caption, CTA, hashtags, alt text.</li>
+        <li>Platform variants are generated together, each validated against length and hashtag limits.</li>
+        <li>Claims checker highlights any unsupported number or claim.</li>
+        <li>Creative brief and design prompt generated; status moves to Design required and a designer is assigned.</li>
+        <li>Designer uploads creative; media spec check runs per platform (ratio, size, format).</li>
+        <li>Writer submits for internal review. Reviewer approves or comments.</li>
+        <li>Post enters client review.</li>
+      </ol>
+    </div>
+    <div>
+      <h4>Client approval on mobile</h4>
+      <ol class="steps">
+        <li>Client receives a review link (in-app now; email or WhatsApp later).</li>
+        <li>Page shows client logo, then each post as it will appear per platform.</li>
+        <li>Approve, reject, or request changes with a comment pinned to that version.</li>
+        <li>Approval stores approver, time, version and content hash.</li>
+        <li>Team gets a notification; changed posts return to Draft with the comment attached.</li>
+      </ol>
+    </div>
+    <div>
+      <h4>Publishing and failure recovery</h4>
+      <ol class="steps">
+        <li>Approved post is scheduled; one job per account is created.</li>
+        <li>Preflight runs at schedule time, 24 hours before and 1 hour before: token, permissions, media, approval hash, pause switch.</li>
+        <li>Problems found early become tasks ("Reconnect Instagram before Thursday 10:00").</li>
+        <li>At run time the worker publishes and records the platform post link.</li>
+        <li>On failure the post card shows platform, account, plain-language reason, recommended fix and a Retry button.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3>The morning routine (Today view)</h3>
+  <p>The manager opens Today and sees, in this order: failed posts, disconnected accounts, posts publishing today, approvals waiting on the team, client change requests, designs due, calendar gaps in the next 14 days, and upcoming relevant special days. Each row has one primary action. Empty sections collapse so the page shrinks as work gets done.</p>
+</section>
+
+<!-- 04 SCHEMA -->
+<section id="schema">
+  <h2><span class="n">04</span>Database schema</h2>
+  <p class="sub">PostgreSQL. Grouped by module, showing key columns only. Full column definitions will live in Drizzle schema files.</p>
+
+  <h3>Conventions that protect client data</h3>
+  <ul>
+    <li><b>IDs:</b> UUIDv7 (time-ordered, index friendly, not guessable).</li>
+    <li><b>Tenant columns:</b> every tenant row carries <code>agency_id</code>; every client-owned row carries <code>client_id</code>, even when it could be derived through a parent. This makes every query filterable in one step.</li>
+    <li><b>Composite foreign keys:</b> child rows reference <code>(client_id, id)</code> of their parent, so the database itself rejects attaching Client B's image to Client A's post.</li>
+    <li><b>Time:</b> <code>timestamptz</code> in UTC; each client has an IANA timezone such as <code>Asia/Kolkata</code>.</li>
+    <li><b>Deletion:</b> <code>archived_at</code> for business data; hard delete only for drafts and on legal request.</li>
+    <li><b>Secrets:</b> token columns hold AES-256-GCM ciphertext plus a key version for rotation.</li>
+  </ul>
+
+  <div class="scroll"><table>
+    <thead><tr><th>Table</th><th>Key columns</th><th>Notes and indexes</th></tr></thead>
+    <tbody>
+      <tr class="group"><td colspan="3">Identity and tenancy</td></tr>
+      <tr><td class="k">agencies</td><td class="c">id, name, slug, timezone, settings jsonb, publishing_paused_at</td><td class="s">Tenant root. Future SaaS plans attach here.</td></tr>
+      <tr><td class="k">users</td><td class="c">id, email, name, avatar_url, status</td><td class="s">Plus Better Auth's session, account and verification tables.</td></tr>
+      <tr><td class="k">agency_members</td><td class="c">agency_id, user_id, role, status</td><td class="s">Unique (agency_id, user_id). Role: super_admin, agency_admin, manager, writer, designer.</td></tr>
+      <tr><td class="k">clients</td><td class="c">id, agency_id, name, slug, logo_asset_id, website, industry, country, timezone, approval_mode, late_window_minutes, publishing_paused_at, status</td><td class="s">Unique (agency_id, slug).</td></tr>
+      <tr><td class="k">client_members</td><td class="c">client_id, user_id, role</td><td class="s">Assigns staff to clients and holds client users (client_approver, client_viewer).</td></tr>
+      <tr><td class="k">invitations</td><td class="c">id, agency_id, client_id, email, role, token_hash, expires_at, accepted_at</td><td class="s">Token stored hashed only.</td></tr>
+      <tr><td class="k">approval_links</td><td class="c">id, client_id, token_hash, scope jsonb, expires_at, created_by, revoked_at, last_used_at</td><td class="s">Passwordless review. Scope lists a plan or post IDs.</td></tr>
+
+      <tr class="group"><td colspan="3">Brand Brain</td></tr>
+      <tr><td class="k">brand_profiles</td><td class="c">client_id (pk), description, audience, locations[], usps jsonb, tone, style, colors jsonb, fonts jsonb, primary_cta, cta_url, phone, email, language_variant, brand_card, brand_card_version</td><td class="s">Brand Card is the compressed AI context, rebuilt when the profile changes.</td></tr>
+      <tr><td class="k">products / services</td><td class="c">id, client_id, name, description, benefits jsonb, url, status, last_promoted_at</td><td class="s">last_promoted_at feeds "not promoted recently".</td></tr>
+      <tr><td class="k">personas</td><td class="c">id, client_id, name, role, pains, goals</td><td class="s"></td></tr>
+      <tr><td class="k">competitors</td><td class="c">id, client_id, name, url, notes</td><td class="s"></td></tr>
+      <tr><td class="k">brand_facts</td><td class="c">id, client_id, statement, kind, value jsonb, source_type, source_ref, status, verified_by, verified_at</td><td class="s">Kind: stat, certification, award, spec, testimonial, client_result. Only verified facts reach AI as claims.</td></tr>
+      <tr><td class="k">brand_rules</td><td class="c">id, client_id, text, type, params jsonb, enforcement</td><td class="s">Enforcement: prompt guidance or hard validation (for example max_hashtags = 5).</td></tr>
+      <tr><td class="k">brand_suggestions</td><td class="c">id, client_id, field_path, proposed jsonb, reason, source_ref, status</td><td class="s">What AI learned, waiting for a person. Never auto-applied.</td></tr>
+      <tr><td class="k">documents</td><td class="c">id, client_id, asset_id, doc_type, text_ref, processing_status</td><td class="s"></td></tr>
+      <tr><td class="k">website_sources / website_pages</td><td class="c">id, client_id, root_url, last_crawled_at / url, title, category, content_hash, summary</td><td class="s">content_hash skips unchanged pages on re-crawl.</td></tr>
+
+      <tr class="group"><td colspan="3">Planning</td></tr>
+      <tr><td class="k">content_categories</td><td class="c">id, agency_id, client_id (nullable), key, name, description, is_promotional</td><td class="s">Null client_id means agency default. is_promotional drives overload checks.</td></tr>
+      <tr><td class="k">content_strategies</td><td class="c">id, client_id, is_active, posts_per_week jsonb, preferred_days[], preferred_times jsonb, effective_from</td><td class="s">History kept, one active per client.</td></tr>
+      <tr><td class="k">strategy_mix_items</td><td class="c">strategy_id, category_id, target_pct</td><td class="s">Sum validated to 100.</td></tr>
+      <tr><td class="k">calendar_templates</td><td class="c">id, agency_id, name, industry, mix jsonb, cadence jsonb</td><td class="s">Defines mix and cadence, never fixed captions.</td></tr>
+      <tr><td class="k">campaigns</td><td class="c">id, client_id, name, goal, starts_on, ends_on, platforms[], audience, cta, utm_defaults jsonb, status</td><td class="s">Plus campaign_products and campaign_services join tables.</td></tr>
+      <tr><td class="k">special_days</td><td class="c">id, name, description, kind, country, region, industry_tags[], importance, recurrence, is_lunar</td><td class="s">GIN index on industry_tags.</td></tr>
+      <tr><td class="k">special_day_occurrences</td><td class="c">id, special_day_id, year, date, is_tentative</td><td class="s">Unique (special_day_id, year).</td></tr>
+      <tr><td class="k">client_special_days</td><td class="c">client_id, occurrence_id, relevance, reason, decision</td><td class="s">Cached AI relevance so it is computed once per client per year.</td></tr>
+      <tr><td class="k">calendar_plans</td><td class="c">id, client_id, month, status, health jsonb, approved_by, approved_at</td><td class="s">Status: draft, plan_review, plan_approved. Unique (client_id, month).</td></tr>
+
+      <tr class="group"><td colspan="3">Content</td></tr>
+      <tr><td class="k">post_ideas</td><td class="c">id, client_id, plan_id, title, hook, concept, category_id, audience, objective, format, cta, creative_idea, rationale, platforms[], source, status, similarity jsonb</td><td class="s">The content inbox. Source: ai, team, client_request, campaign.</td></tr>
+      <tr><td class="k">posts</td><td class="c">id, client_id, plan_id, campaign_id, idea_id, category_id, title, status, owner_id, designer_id, planned_date, scheduled_at, due_at, current_version_id, approved_version_id, publish_mode</td><td class="s">Index (client_id, scheduled_at), (client_id, status), (agency_id, status, due_at).</td></tr>
+      <tr><td class="k">post_versions</td><td class="c">id, client_id, post_id, version_no, master_caption, hook, cta, hashtags[], creative_headline, creative_subtext, alt_text, scheduled_at, content_hash, created_by, change_note</td><td class="s">Immutable. Unique (post_id, version_no). Full-text index on caption.</td></tr>
+      <tr><td class="k">platform_variants</td><td class="c">id, client_id, post_version_id, social_account_id, platform, caption, title, link_url, first_comment, validation jsonb</td><td class="s">Unique (post_version_id, social_account_id). Composite FK to social_accounts (client_id, id).</td></tr>
+      <tr><td class="k">creative_briefs</td><td class="c">id, client_id, post_version_id, objective, visual_idea, headline, supporting_text, cta, dimensions jsonb, direction, style, layout, avoid, design_prompt</td><td class="s"></td></tr>
+      <tr><td class="k">post_media</td><td class="c">client_id, post_version_id, asset_id, position, platform</td><td class="s">Composite FK (client_id, asset_id) to media_assets. The cross-client asset guard.</td></tr>
+      <tr><td class="k">approvals</td><td class="c">id, client_id, post_id, post_version_id, plan_id, content_hash, stage, decision, decided_by, approval_link_id, comment, decided_at</td><td class="s">Stage: internal, client. Append-only.</td></tr>
+      <tr><td class="k">comments</td><td class="c">id, client_id, post_id, post_version_id, author_id, approval_link_id, body, is_internal, resolved_at</td><td class="s">is_internal comments are never shown to client users.</td></tr>
+      <tr><td class="k">content_embeddings</td><td class="c">client_id, object_type, object_id, model, text_hash, embedding vector</td><td class="s">HNSW index. Every similarity query filters client_id first.</td></tr>
+      <tr><td class="k">hashtag_sets</td><td class="c">id, client_id, name, platform, tags[]</td><td class="s"></td></tr>
+      <tr><td class="k">utm_links</td><td class="c">id, client_id, campaign_id, variant_id, base_url, source, medium, campaign, content, full_url</td><td class="s">Naming convention per client in client settings.</td></tr>
+
+      <tr class="group"><td colspan="3">Media</td></tr>
+      <tr><td class="k">media_assets</td><td class="c">id, client_id, agency_id, storage_key, kind, mime, bytes, width, height, duration_ms, checksum, campaign_id, product_id, service_id, month, tags[], status, replaced_by_id, uploaded_by</td><td class="s">Unique (client_id, id) for composite FKs. Storage key prefixed with agency and client IDs.</td></tr>
+
+      <tr class="group"><td colspan="3">Integrations</td></tr>
+      <tr><td class="k">oauth_connections</td><td class="c">id, agency_id, platform, authorized_by, platform_user_id, access_token_enc, refresh_token_enc, key_version, expires_at, refresh_expires_at, scopes[], status, last_refreshed_at</td><td class="s">One login can grant many accounts across clients.</td></tr>
+      <tr><td class="k">social_accounts</td><td class="c">id, client_id, oauth_connection_id, platform, platform_account_id, name, handle, avatar_url, account_token_enc, connection_status, publish_mode, missing_scopes[], last_sync_at, last_publish_attempt_at, last_error jsonb</td><td class="s">Unique (agency_id, platform, platform_account_id): one page belongs to one client.</td></tr>
+      <tr><td class="k">integration_events</td><td class="c">id, social_account_id, kind, detail jsonb, created_at</td><td class="s">Timeline behind the health page.</td></tr>
+
+      <tr class="group"><td colspan="3">Publishing</td></tr>
+      <tr><td class="k">publishing_jobs</td><td class="c">id, client_id, post_id, post_version_id, variant_id, social_account_id, publish_key, run_at, status, attempt_count, next_attempt_at, lease_until, platform_post_id, platform_post_url, published_at, last_error_class, last_error jsonb</td><td class="s">Unique publish_key and unique (variant_id, social_account_id). Partial index on (status, next_attempt_at) for active states.</td></tr>
+      <tr><td class="k">publishing_attempts</td><td class="c">id, job_id, attempt_no, step, started_at, finished_at, outcome, error_class, http_status, platform_error jsonb, platform_object_ids jsonb</td><td class="s">Written before each external call, updated after.</td></tr>
+      <tr><td class="k">rate_limit_windows</td><td class="c">platform, scope_key, window_start, used, cap, reset_at</td><td class="s">Per app, per account, per day as each platform requires.</td></tr>
+
+      <tr class="group"><td colspan="3">Analytics</td></tr>
+      <tr><td class="k">post_metric_snapshots</td><td class="c">id, client_id, job_id, platform, captured_at, impressions, reach, likes, comments, shares, saves, clicks, video_views, raw jsonb</td><td class="s">Null means not provided. Partition by month once large.</td></tr>
+      <tr><td class="k">account_metrics_daily</td><td class="c">social_account_id, date, followers, reach, impressions, raw jsonb</td><td class="s">Unique (social_account_id, date).</td></tr>
+      <tr><td class="k">insights</td><td class="c">id, client_id, period, statement, evidence jsonb, sample_size, confidence, status</td><td class="s">Low sample size is labeled, not hidden.</td></tr>
+      <tr><td class="k">reports</td><td class="c">id, client_id, month, status, content jsonb, generated_at</td><td class="s"></td></tr>
+
+      <tr class="group"><td colspan="3">Operations</td></tr>
+      <tr><td class="k">tasks</td><td class="c">id, client_id, title, kind, assignee_id, due_at, priority, status, post_id, auto_generated</td><td class="s">Preflight and workflow create tasks automatically.</td></tr>
+      <tr><td class="k">notifications</td><td class="c">id, agency_id, user_id, client_id, type, title, body, link, dedupe_key, read_at</td><td class="s">Unique (user_id, dedupe_key) stops repeated alerts. Index (user_id, read_at, created_at).</td></tr>
+      <tr><td class="k">ai_runs</td><td class="c">id, agency_id, client_id, user_id, feature, provider, model, prompt_version, input_tokens, cached_tokens, output_tokens, cost_micros, latency_ms, status</td><td class="s">The AIUsage table.</td></tr>
+      <tr><td class="k">ai_budgets</td><td class="c">agency_id, client_id, monthly_limit_micros, alert_pct</td><td class="s">Hard caps per agency and per client.</td></tr>
+      <tr><td class="k">client_health_snapshots</td><td class="c">client_id, date, score, factors jsonb</td><td class="s">Stored daily so the app can explain why a score changed.</td></tr>
+      <tr><td class="k">audit_logs</td><td class="c">id, agency_id, client_id, actor_type, actor_id, action, object_type, object_id, before jsonb, after jsonb, ip, user_agent, created_at</td><td class="s">Append-only: the app's database role has no UPDATE or DELETE on this table.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 05 PERMISSIONS -->
+<section id="permissions">
+  <h2><span class="n">05</span>Permission model</h2>
+  <p class="sub">Two questions answered on the server for every request: may this role do this action, and does this person have access to this client? The UI hides what you cannot do, but the server is what refuses it.</p>
+
+  <div class="scroll"><table class="matrix">
+    <thead><tr><th>Action</th><th>Super Admin</th><th>Agency Admin</th><th>Manager</th><th>Writer</th><th>Designer</th><th>Client Approver</th><th>Client Viewer</th></tr></thead>
+    <tbody>
+      <tr><td>System settings, AI providers, usage</td><td class="y">Yes</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Invite team, change roles</td><td class="y">Yes</td><td class="y">Yes</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Create or archive clients, assign team</td><td class="y">Yes</td><td class="y">Yes</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Connect and assign social accounts</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Edit Brand Brain, verify facts, rules</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Suggest</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Content strategy and mix</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Generate ideas and calendars</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Write and edit captions</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>View creative briefs, upload creatives</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">View</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Internal approval</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Client approval of plans and posts</td><td class="nn">·</td><td class="a">On behalf, logged</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="y">Own client</td><td class="nn">·</td></tr>
+      <tr><td>Schedule posts</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Publish now, bulk schedule</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned, confirm</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+      <tr><td>Pause publishing</td><td class="y">Agency</td><td class="y">Agency</td><td class="a">Assigned client</td><td class="nn">·</td><td class="nn">·</td><td class="a">Own client</td><td class="nn">·</td></tr>
+      <tr><td>Comment</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="y">Own client</td><td class="y">Own client</td></tr>
+      <tr><td>View calendar, reports, analytics</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="a">Calendar</td><td class="y">Own client</td><td class="y">Own client</td></tr>
+      <tr><td>Media library</td><td class="y">Yes</td><td class="y">Yes</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="a">Assigned</td><td class="a">Approved only</td><td class="a">Approved only</td></tr>
+      <tr><td>Audit log</td><td class="y">Yes</td><td class="y">Yes</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td><td class="nn">·</td></tr>
+    </tbody>
+  </table></div>
+  <p class="num" style="font-size:13px;color:var(--muted)"><span class="y">Yes</span> across all clients in the agency · <span class="a">Assigned</span> only clients the person is a member of · <span class="nn">·</span> not allowed</p>
+
+  <h3>How enforcement works</h3>
+  <ul>
+    <li><b>One gate:</b> every server action and route handler starts with <code>requireAccess(session, permission, clientId)</code>. It loads membership from the database, never from the request body.</li>
+    <li><b>Scoped repositories:</b> data access for client-owned tables goes through <code>forClient(ctx)</code>, which injects <code>client_id</code> into every query. Raw queries without scope fail code review and a lint rule.</li>
+    <li><b>IDs are untrusted:</b> a post ID from the browser is always re-checked against the current client scope before use.</li>
+    <li><b>Database backstop:</b> composite foreign keys stop cross-client links. Postgres Row Level Security on <code>agency_id</code> is added in Version 1.5 as a second wall once multiple agencies exist.</li>
+    <li><b>AI backstop:</b> the context builder and every assistant tool take the client ID from the server session, never from the model. The model cannot ask for another client's data.</li>
+    <li><b>Approval links:</b> random 256-bit tokens stored hashed, bound to one client and a scope, expiring (default 14 days), revocable, rate limited, and logged with IP.</li>
+    <li><b>Isolation test suite:</b> an automated test seeds two clients and calls every registered route as a Client A user against Client B IDs. Any non-refusal fails the build.</li>
+  </ul>
+</section>
+
+<!-- 06 ROUTES -->
+<section id="routes">
+  <h2><span class="n">06</span>Pages and routes</h2>
+  <p class="sub">The selected client lives in the URL (<code>/c/[client]</code>), not in hidden state. A copied link always opens the right client, and the client's logo and color strip sit at the top of every page inside it.</p>
+<pre class="code"><span class="cm"># Agency-wide (client switcher set to "All clients")</span>
+<span class="hl">/dashboard</span>                  Attention summary and multi-client counts
+<span class="hl">/today</span>                      The manager's daily workspace
+<span class="hl">/calendar</span>                   All clients, filter by client, platform, owner, status
+<span class="hl">/content</span>                    Inbox: AI ideas, drafts, client requests, team ideas
+<span class="hl">/approvals</span>                  Everything waiting on internal or client review
+<span class="hl">/campaigns</span>
+<span class="hl">/media</span>                      Agency view, always grouped by client
+<span class="hl">/tasks</span>
+<span class="hl">/analytics</span>
+<span class="hl">/integrations</span>                Integration Health across all accounts
+<span class="hl">/team</span>                        Members, roles, workload
+<span class="hl">/notifications</span>
+<span class="hl">/settings</span>                    agency · ai-providers · usage · special-days · templates · categories · audit-log
+<span class="hl">/onboarding</span>                  Guided setup with progress
+
+<span class="cm"># Inside one client workspace</span>
+<span class="hl">/c/[client]</span>                  Overview: health, next posts, gaps, pending items
+<span class="hl">/c/[client]/brand</span>            profile · products · services · personas · facts · rules · sources · suggestions
+<span class="hl">/c/[client]/strategy</span>         Categories, mix, cadence, special day preferences
+<span class="hl">/c/[client]/calendar</span>         ?view=month|week|list  &amp;platform=
+<span class="hl">/c/[client]/calendar/generate</span>  Generator wizard and draft plan review
+<span class="hl">/c/[client]/ideas</span>
+<span class="hl">/c/[client]/posts/[id]</span>       Editor tabs: content · platforms · brief · media · review · history · publishing
+<span class="hl">/c/[client]/campaigns/[id]</span>
+<span class="hl">/c/[client]/media</span>
+<span class="hl">/c/[client]/approvals</span>
+<span class="hl">/c/[client]/analytics</span>        and /reports/[month]
+<span class="hl">/c/[client]/accounts</span>         Social accounts, health, reconnect, assisted mode
+<span class="hl">/c/[client]/settings</span>         Approval mode, timezone, late window, members, pause
+
+<span class="cm"># Client-facing (mobile first)</span>
+<span class="hl">/review/[token]</span>              Passwordless plan and post approval
+<span class="hl">/portal/[client]</span>             Logged-in client: calendar, approvals, reports
+
+<span class="cm"># Machine endpoints</span>
+<span class="hl">/api/oauth/[platform]/start</span>    and /callback   (state + PKCE, CSRF-bound)
+<span class="hl">/api/uploads/sign</span>              Signed direct-to-storage upload URLs
+<span class="hl">/api/platform/meta/deauthorize</span> and /data-deletion   (required by Meta)
+<span class="hl">/api/internal/*</span>                Worker-only, signed requests
+</pre>
+  <p><b>Command palette (Ctrl or Cmd + K):</b> jump to any client or page, create post, generate ideas, generate calendar, upload creative, find post by title. Commands run with the currently selected client and show its logo before acting.</p>
+</section>
+
+<!-- 07 INTEGRATIONS -->
+<section id="integrations">
+  <h2><span class="n">07</span>Integration architecture</h2>
+  <p class="sub">Each platform is an adapter behind one interface. The rest of the product never knows which platform it is talking to, only what that platform can do.</p>
+<pre class="code"><span class="hl">interface</span> PlatformAdapter {
+  platform: Platform
+  capabilities: Capabilities            <span class="cm">// formats, caption and media limits, analytics fields</span>
+  authorizeUrl(state: string, pkce: Pkce): URL
+  exchangeCode(code: string, pkce: Pkce): Promise&lt;TokenSet&gt;
+  refresh(conn: OAuthConnection): Promise&lt;TokenSet | NotRefreshable&gt;
+  discoverAccounts(conn: OAuthConnection): Promise&lt;RemoteAccount[]&gt;
+  checkHealth(account: SocialAccount): Promise&lt;HealthReport&gt;   <span class="cm">// token valid, scopes, role on page</span>
+  validate(variant: Variant, media: Asset[]): Issue[]
+  publishStep(job: Job, step: Step): Promise&lt;StepResult&gt;       <span class="cm">// resumable, records platform object ids</span>
+  findRecentPost(account: SocialAccount, match: Match): Promise&lt;RemotePost | null&gt;
+  fetchMetrics(account: SocialAccount, postIds: string[]): Promise&lt;MetricSnapshot[]&gt;
+  classifyError(err: unknown): ErrorClass
+}</pre>
+
+  <h3>Platform capabilities</h3>
+  <div class="note"><span class="tag" style="color:var(--muted)">Verify during Phase 2</span><p>Platform limits and review rules change often. Every value below is stored as adapter configuration, not scattered through the code, and is re-checked against official documentation when each adapter is built.</p></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Platform</th><th>Official API and login</th><th>Tokens</th><th>V1 formats</th><th>Caption limits</th><th>Access gate</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Facebook Page</td><td>Graph API, Facebook Login for Business</td><td>Long-lived user token about 60 days; page token derived from it</td><td>Text, link, image, multi-image, video</td><td>Very long; keep under 500 for reach</td><td>App Review, Business Verification</td></tr>
+      <tr><td class="k">Instagram Business</td><td>Graph API via Facebook Login, or Instagram Login</td><td>About 60 days, refreshable</td><td>Image, carousel up to 10, Reels</td><td class="num">2,200 chars, 30 hashtags</td><td>App Review; Business or Creator account; public media URL</td></tr>
+      <tr><td class="k">LinkedIn Page</td><td>Community Management API, OAuth 2.0</td><td>Access about 60 days, refresh up to 1 year</td><td>Text, link, image, multi-image</td><td class="num">3,000 chars</td><td>Vetted application, registered business, page admin role</td></tr>
+      <tr><td class="k">X</td><td>X API v2, OAuth 2.0 with PKCE</td><td>About 2 hours, refresh token</td><td>Text, image, thread</td><td class="num">280 chars standard</td><td>Free access with a small app-wide monthly cap; overflow goes to Assisted</td></tr>
+      <tr><td class="k">Threads</td><td>Threads API, Threads login</td><td>About 60 days, refreshable</td><td>Text, image, carousel</td><td class="num">500 chars</td><td>App Review; daily post cap per profile</td></tr>
+      <tr><td class="k">Pinterest</td><td>API v5, OAuth 2.0</td><td>Access about 30 days, long refresh token</td><td>Image Pin with link, board</td><td class="num">Title 100, description 800</td><td>Trial then Standard access with demo video</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Connection lifecycle</h3>
+  <ol class="steps">
+    <li><b>Start:</b> user clicks Connect on a client's Accounts page. Server creates a signed state bound to user, client and platform, plus a PKCE verifier.</li>
+    <li><b>Callback:</b> state verified, code exchanged server-side, tokens encrypted immediately. Granted scopes compared with required scopes.</li>
+    <li><b>Discover and assign:</b> all pages or profiles the login can manage are listed. The user ticks the ones that belong to this client. Pages already assigned to another client are shown locked with that client's name.</li>
+    <li><b>Health check:</b> adapter confirms it can read the account and has publishing permission. Only then is the status set to Connected.</li>
+    <li><b>Refresh sweeper (daily):</b> refreshes tokens expiring within 10 days where the platform allows; short-lived X tokens refresh just before use.</li>
+    <li><b>Deauthorization:</b> platform callbacks and failed refreshes mark accounts Disconnected, pause their jobs, and notify owners.</li>
+  </ol>
+
+  <h3>Health states shown to users</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>State</th><th>Meaning</th><th>What the user sees</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip ok">Connected</span></td><td>Token valid, all required scopes, last check passed</td><td>Last sync time, last successful publish</td></tr>
+      <tr><td><span class="chip warn">Token expiring</span></td><td>Cannot auto-refresh and expires within 10 days</td><td>Reconnect button and the date scheduled posts start failing</td></tr>
+      <tr><td><span class="chip warn">Permission missing</span></td><td>Connected but a required scope or page role is absent</td><td>Exactly which permission, and who must grant it</td></tr>
+      <tr><td><span class="chip warn">Action required</span></td><td>Platform needs the user to do something (password change, checkpoint)</td><td>Platform message in plain language</td></tr>
+      <tr><td><span class="chip crit">Disconnected</span></td><td>Revoked, deauthorized or refresh failed</td><td>Affected scheduled posts listed with Reconnect</td></tr>
+      <tr><td><span class="chip crit">API error</span></td><td>Repeated platform errors unrelated to auth</td><td>Error history and whether the platform reports an outage</td></tr>
+      <tr><td><span class="chip info">Awaiting platform approval</span></td><td>Our app is not yet approved for this capability</td><td>Assisted mode active; review status</td></tr>
+      <tr><td><span class="chip plain">Assisted</span></td><td>Publishing handled manually by choice or limitation</td><td>Reminders, copy buttons, "Mark as posted" with link</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Media handling</h3>
+  <ul>
+    <li>Browser uploads straight to storage through a signed URL, so large videos never pass through the app server.</li>
+    <li>Images are converted and resized in the browser before upload (for example PNG to JPEG for Instagram), so no image server is needed.</li>
+    <li>At publish time the worker gives platforms a short-lived signed URL to fetch media. Storage with no egress fees keeps this free.</li>
+    <li>Spec check per platform before scheduling: aspect ratio, pixel size, file size, format, video duration.</li>
+  </ul>
+
+  <h3>Future integrations</h3>
+  <p>Canva, Google Drive, Dropbox, Slack, Teams, WhatsApp and email use the same pattern: a connector record plus an adapter. Notifications already go through a channel interface with only the in-app channel implemented.</p>
+</section>
+
+<!-- 08 AI -->
+<section id="ai">
+  <h2><span class="n">08</span>AI architecture</h2>
+  <p class="sub">AI is a tool the product calls through one gateway, never a component with direct database access. The gateway decides which model runs, what context it gets, what it may claim, and what it costs.</p>
+
+  <h3>The gateway</h3>
+<pre class="code">ai.run({ feature: <span class="hl">"post.generate"</span>, clientId, input })
+  1  Budget check          agency and client monthly caps
+  2  Route model           feature → tier → provider and model (editable in settings)
+  3  Build context         layered, cached, client-scoped (below)
+  4  Call provider         Vercel AI SDK. Default OpenAI; swappable to Anthropic, Google, compatible
+  5  Parse output          Zod schema; one automatic repair attempt if invalid
+  6  Guardrails            house style, brand rules, claims checker, platform limits
+  7  Log usage             ai_runs: tokens, cached tokens, cost, latency, prompt version</pre>
+
+  <h3>Context layers</h3>
+  <p>Ordered from most stable to most volatile, so provider prompt caching reuses the stable prefix across many calls for the same client.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Layer</th><th>Contents</th><th>Size</th><th>Changes</th></tr></thead>
+    <tbody>
+      <tr><td class="k">L0 Rules</td><td>Global rules: never invent claims, house style (no em dashes), output schema</td><td class="num">about 400 tokens</td><td>Per release</td></tr>
+      <tr><td class="k">L1 Brand Card</td><td>Compressed brand summary: what they do, audience, voice, CTAs, topics to avoid, client rules</td><td class="num">600 to 900 tokens</td><td>When profile changes</td></tr>
+      <tr><td class="k">L2 Facts</td><td>Only verified facts relevant to the selected product, service or campaign</td><td class="num">up to 500 tokens</td><td>Per request</td></tr>
+      <tr><td class="k">L3 Task context</td><td>Month, category, platform specs, titles of last 60 days of posts, relevant special days</td><td class="num">300 to 800 tokens</td><td>Per request</td></tr>
+      <tr><td class="k">L4 Instruction</td><td>The user's action: "Make more professional", tone, number of ideas</td><td class="num">under 100 tokens</td><td>Per request</td></tr>
+    </tbody>
+  </table></div>
+  <p>The full database, full website text or full documents are never sent. They are summarized once into the Brand Card and facts, which is where most of the cost saving comes from.</p>
+
+  <h3>Pipelines</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Feature</th><th>How it works</th><th>Tier</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Idea engine</td><td>Generate 1.5 times the requested ideas in one call. Embed each, compare against the client's last 180 days. Drop near-duplicates, attach warnings to related ones, score for relevance, promotion level and platform fit. Return the best N.</td><td>Fast</td></tr>
+      <tr><td class="k">Calendar generator</td><td>Code allocates slots from cadence, preferred days and times, mix percentages, campaign priority and spacing rules. Code picks relevant special days from cached relevance. AI fills each slot with an idea in one batched call. Code computes the health score.</td><td>Smart for fill</td></tr>
+      <tr><td class="k">Content generation</td><td>One call returns hook, master caption, CTA, hashtags, alt text and every selected platform variant, each with its own schema and limits.</td><td>Fast by default</td></tr>
+      <tr><td class="k">Tone buttons and repurpose</td><td>Rewrite with the existing content as input; small context, cheap model.</td><td>Fast</td></tr>
+      <tr><td class="k">Creative brief and design prompt</td><td>Generated from the approved caption, brand colors, fonts and platform dimensions.</td><td>Fast</td></tr>
+      <tr><td class="k">Website analysis</td><td>Read sitemap, respect robots.txt, fetch up to 30 pages, extract main text, classify each page, propose facts and catalog items into the review queue.</td><td>Fast</td></tr>
+      <tr><td class="k">Special day relevance</td><td>Industry tag prefilter in SQL, then a cheap model rates the shortlist with a one-line reason. Cached per client per year.</td><td>Fast</td></tr>
+      <tr><td class="k">Insights and reports</td><td>SQL computes every number. AI only writes the narrative from those numbers, with sample sizes attached. Below the minimum sample, the insight is labeled "Early signal, not enough data".</td><td>Smart</td></tr>
+      <tr><td class="k">Assistant chat (V1.5)</td><td>Tool calling with tools bound to the current client: list posts, find gaps, performance summary, draft ideas into the inbox. It can never schedule or publish.</td><td>Smart</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Guardrails that run on every output</h3>
+  <ul>
+    <li><b>Claims checker:</b> detects numbers, percentages, years in business, "certified", "award", "leading", "#1", quotes and client results. Each must match a verified fact, or the phrase is highlighted as "Needs confirmation" and a safe rewording is offered.</li>
+    <li><b>Brand rules:</b> hard rules (max hashtags, no emojis, banned words, required website link) are validated in code after generation, not just requested in the prompt.</li>
+    <li><b>Platform limits:</b> character counts and hashtag counts checked per variant.</li>
+    <li><b>House style:</b> em dashes and spaced en dashes replaced with commas or colons by a deterministic sanitizer, covered by a unit test.</li>
+    <li><b>Brand Brain protection:</b> AI output can only create <code>brand_suggestions</code>; it has no write path to the profile itself.</li>
+  </ul>
+
+  <h3>Similarity and repetition</h3>
+  <p>Embeddings of title, hook and concept are stored per client in pgvector. A new idea is compared only with the same client's ideas, scheduled posts and published posts. Result: similarity score, the three closest posts with dates, and a label such as <span class="chip warn">Similar content was posted 18 days ago</span>. A "fresh angle" rewrite is generated only when the user asks, which saves a call on every warning. Thresholds are tuned on demo data in Phase 3.</p>
+
+  <h3>Cost control</h3>
+  <ul>
+    <li>Two model tiers: a fast, inexpensive model for most work and a stronger model for monthly planning and report narratives. Mapping is editable without code changes.</li>
+    <li>Stable prompt prefix per client for provider-side prompt caching.</li>
+    <li>Embeddings from a low-cost model, computed once per item and reused (text hash prevents recomputation).</li>
+    <li>Batching: one call for a whole month's slot fill; one call for all platform variants.</li>
+    <li>Hard monthly caps per agency and client, with an alert at 80 percent.</li>
+    <li>Prompt templates versioned in the repository and checked against a small evaluation set of demo clients before changes ship.</li>
+  </ul>
+  <div class="note ok"><span class="tag">Decision: OpenAI as default provider</span><p>A paid OpenAI API key (prepaid $5 credit) is the default for generation and embeddings. Paid API data is not used for model training by default, so real client brand documents can be used. Models per tier are chosen from OpenAI's current lineup at build time and stay editable in settings. Two budget walls: a monthly limit on the OpenAI project dashboard, and the app's own caps in <code>ai_budgets</code>.</p></div>
+  <p><b>Rough AI cost at 10 clients:</b> about 1,000 AI calls a month (plans, ideas, content, rewrites). With a small, low-cost model doing most work, $5 of credit is expected to last several weeks at minimum; Tamil generation uses more tokens and costs more. This is an estimate; the Usage page reports real spend, split by language, from <code>ai_runs</code> from the first day.</p>
+
+  <h3>English and Tamil</h3>
+  <ul>
+    <li><b>Language per post:</b> English, Tamil, or bilingual captions, with a default language per client in the Brand Brain.</li>
+    <li><b>Consistent Tamil wording:</b> each client stores Tamil brand vocabulary (product names, preferred terms, words to avoid) that the AI must follow.</li>
+    <li><b>Similarity:</b> a multilingual embedding model, so an English post and a Tamil post on the same topic are recognised as related.</li>
+    <li><b>Counting:</b> character limits counted the way each platform counts. One visible Tamil letter is often 2 to 3 characters to a platform.</li>
+    <li><b>Special days:</b> Tamil Nadu observances included (Pongal, Tamil New Year, Aadi Perukku, Karthigai Deepam and others), suggested only where relevant to the client.</li>
+    <li><b>Creative briefs:</b> Tamil-capable font suggestions such as Noto Sans Tamil or Mukta Malar.</li>
+    <li><b>Interface:</b> English for now; all UI text goes through a message catalog so a Tamil interface can be added later.</li>
+  </ul>
+</section>
+
+<!-- 09 PUBLISHING -->
+<section id="publishing">
+  <h2><span class="n">09</span>Scheduling and publishing</h2>
+  <p class="sub">The database is the source of truth for every job. The queue only delivers work. If the queue loses a message or delivers it twice, the database state still prevents a missed or duplicate post.</p>
+
+  <h3>Job lifecycle</h3>
+  <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Pending
+  Pending --> Queued: due within 2 minutes
+  Pending --> Cancelled: unscheduled or paused
+  Queued --> Processing: lease claimed
+  Processing --> Published: platform confirmed
+  Processing --> Retrying: safe to retry
+  Retrying --> Queued: backoff elapsed
+  Processing --> NeedsVerification: result unknown
+  NeedsVerification --> Published: found on platform
+  NeedsVerification --> Queued: confirmed not posted
+  Processing --> Failed: not retryable
+  Retrying --> Failed: attempts used or late window passed
+  Failed --> Queued: user fixed and retried
+  Published --> [*]
+</pre>
+  </div>
+
+  <h3>How a post goes out</h3>
+  <ol class="steps">
+    <li><b>Schedule:</b> for an approved post, one job is created per target account. <code>publish_key</code> = hash of variant ID, account ID and approved version. A unique index makes a second job for the same thing impossible.</li>
+    <li><b>Tick:</b> a cron trigger runs every minute and moves jobs due in the next 2 minutes from Pending to Queued, sending each to the queue with the exact delay.</li>
+    <li><b>Claim:</b> the consumer runs one atomic update: set Processing and a 5 minute lease, only if the job is still Queued or Retrying. A duplicate delivery finds nothing to claim and exits.</li>
+    <li><b>Final preflight:</b> pause switches off, account healthy, approved version still current, content hash unchanged, within the late window, rate limit available.</li>
+    <li><b>Publish in steps:</b> an attempt row is written before each external call. Multi-step platforms (Instagram creates a container, waits for processing, then publishes) store each platform object ID, so a retry resumes rather than restarts.</li>
+    <li><b>Confirm:</b> store platform post ID and link, set Published, update post status, notify owner, schedule metric syncs at 1 hour, 24 hours, 7 days and 28 days.</li>
+    <li><b>Recover:</b> a sweeper returns expired leases to Queued if no request was sent, or to Needs verification if a request may have reached the platform.</li>
+  </ol>
+
+  <h3>Error classes and what happens</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Class</th><th>Example</th><th>Action</th><th>Message to user</th></tr></thead>
+    <tbody>
+      <tr><td class="k">auth_expired</td><td>Token revoked or expired</td><td>No retry; account Disconnected; related jobs held</td><td>"Instagram publishing failed because the account authorization expired. Reconnect the account and retry."</td></tr>
+      <tr><td class="k">permission_missing</td><td>Page role removed</td><td>No retry; account Permission missing</td><td>"LinkedIn no longer allows posting to this page from your login. A page admin must restore your posting role."</td></tr>
+      <tr><td class="k">rate_limited</td><td>HTTP 429 or daily cap reached</td><td>Retry after the reset time the platform reports</td><td>"Threads daily limit reached for this profile. Will retry at 09:00."</td></tr>
+      <tr><td class="k">transient_before_send</td><td>DNS or connection failure, request never left</td><td>Retry with backoff</td><td>Shown only if all retries fail</td></tr>
+      <tr><td class="k">platform_unavailable</td><td>HTTP 5xx on a safe step (upload, container create)</td><td>Retry with backoff</td><td>"Facebook is having problems. Retrying automatically."</td></tr>
+      <tr><td class="k">ambiguous</td><td>Timeout or 5xx on the final publish call</td><td>Needs verification: search account's recent posts for a caption match; retry only if confirmed absent</td><td>"Checking whether this post went live before retrying."</td></tr>
+      <tr><td class="k">media_invalid</td><td>Wrong ratio, format, size</td><td>No retry</td><td>"Instagram rejected the image: ratio 2:1 is outside the allowed 4:5 to 1.91:1 range. Replace the creative."</td></tr>
+      <tr><td class="k">content_invalid</td><td>Caption too long, blocked link</td><td>No retry</td><td>Exact limit and current length</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Backoff:</b> 1, 5, 15 then 45 minutes with random jitter, maximum 4 attempts, never beyond the late publish window. <b>Rate limits</b> are tracked per app and per account so one busy client cannot exhaust a shared X or Meta limit for others.</p>
+
+  <h3>Guarantees and how they are tested</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Guarantee</th><th>Mechanism</th><th>Test</th></tr></thead>
+    <tbody>
+      <tr><td>Never publish twice</td><td>Unique publish_key, atomic lease claim, attempt log, Needs verification state</td><td>Kill worker mid-call; deliver same message twice; timeout after send</td></tr>
+      <tr><td>Never publish an unapproved version</td><td>Job bound to approved version and content hash, re-checked at publish</td><td>Edit caption after scheduling; job must hold</td></tr>
+      <tr><td>Never publish to the wrong client's account</td><td>Composite FKs from variant to account to client; preflight re-check</td><td>Attempt cross-client variant insert; must fail in database</td></tr>
+      <tr><td>Never silently miss a post</td><td>Minute tick plus sweeper; overdue Pending jobs raise an alert</td><td>Disable tick for 10 minutes; alert fires</td></tr>
+      <tr><td>Respect the pause switch</td><td>Checked at claim time, not only at queue time</td><td>Pause after queueing; job must cancel</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Assisted publishing</h3>
+  <p>Assisted jobs follow the same lifecycle, but at run time they notify the owner instead of calling an API. The post card shows the final caption with a copy button, creative downloads, and a direct link to the platform's composer. The owner pastes the live post URL and clicks <b>Mark as posted</b>, which records who posted it and when. Analytics sync works afterwards if the account is connected for reading.</p>
+</section>
+
+<!-- 10 STACK -->
+<section id="stack">
+  <h2><span class="n">10</span>Technology stack</h2>
+  <p class="sub">Your suggested stack holds up. Two substitutions (Drizzle instead of Prisma, Cloudflare instead of Vercel for hosting) are explained below.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Why</th><th>Swap path</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Framework</td><td>Next.js App Router, React, TypeScript strict</td><td>Server components for fast lists, server actions for mutations, one codebase</td><td>Standard Node deploy anywhere</td></tr>
+      <tr><td class="k">UI</td><td>Tailwind CSS, shadcn/ui on Radix, lucide icons</td><td>Accessible primitives you own and restyle; no generic admin template look</td><td></td></tr>
+      <tr><td class="k">Calendar</td><td>Custom month and week grid with dnd-kit</td><td>Full control of cards (logo, platform, status); avoids paid calendar licences</td><td></td></tr>
+      <tr><td class="k">Tables</td><td>TanStack Table with server pagination</td><td>Handles tens of thousands of posts</td><td></td></tr>
+      <tr><td class="k">Forms</td><td>React Hook Form with Zod</td><td>Same Zod schema validates in the browser and on the server</td><td></td></tr>
+      <tr><td class="k">Client state</td><td>TanStack Query for interactive views</td><td>Optimistic drag and drop with rollback on server refusal</td><td></td></tr>
+      <tr><td class="k">Database</td><td>PostgreSQL 16+ with pgvector and pg_trgm</td><td>Relational integrity, vector similarity and fuzzy search in one database</td><td>Any managed Postgres</td></tr>
+      <tr><td class="k">ORM</td><td>Drizzle</td><td>Native pgvector support, SQL-transparent for lease queries, light on serverless and Workers. Prisma needs raw SQL for vectors and SKIP LOCKED patterns</td><td>Schema is plain SQL migrations</td></tr>
+      <tr><td class="k">App auth</td><td>Better Auth</td><td>Open source, sessions in your own Postgres, email and password, magic links, Google, organization and role support</td><td>Data stays in your tables</td></tr>
+      <tr><td class="k">Social OAuth</td><td>Own adapter layer</td><td>These are publishing connections, not logins; they need encryption, refresh and multi-account discovery</td><td></td></tr>
+      <tr><td class="k">Jobs</td><td>Postgres job table, Cloudflare Cron Triggers and Queues</td><td>Database-backed truth, reliable timed delivery, no always-on server to pay for</td><td>Queue interface: pg-boss, BullMQ or SQS later</td></tr>
+      <tr><td class="k">Storage</td><td>Cloudflare R2</td><td>S3-compatible, generous free storage, no egress fees when platforms fetch media</td><td>Any S3 API</td></tr>
+      <tr><td class="k">Cache and rate limits</td><td>Postgres first; Upstash Redis only when measured need appears</td><td>One fewer service in Version 1</td><td></td></tr>
+      <tr><td class="k">AI</td><td>Vercel AI SDK behind own gateway</td><td>OpenAI by default; the same code path serves Anthropic, Google and compatible providers; structured output and tool calling</td><td>Provider is a settings change</td></tr>
+      <tr><td class="k">Email</td><td>Resend (invites, magic links)</td><td>Free tier covers early volume</td><td>Any SMTP</td></tr>
+      <tr><td class="k">Encryption</td><td>AES-256-GCM via Web Crypto, key in platform secrets, key versioning</td><td>Tokens unreadable from a database dump</td><td>KMS later</td></tr>
+      <tr><td class="k">Errors</td><td>Sentry free tier plus structured logs</td><td>Admins see technical detail; users see plain language</td><td></td></tr>
+      <tr><td class="k">Testing</td><td>Vitest against real Postgres, Playwright for flows, MSW platform fakes</td><td>Fakes exist only in tests, never in the product</td><td></td></tr>
+      <tr><td class="k">Time</td><td>date-fns-tz, UTC storage, client IANA timezones</td><td>Correct for India and clients abroad with daylight saving</td><td></td></tr>
+      <tr><td class="k">Caption editor</td><td>Plain text area with live counters per platform</td><td>Platforms accept plain text; a rich editor would add formatting that breaks on publish</td><td></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 11 DEPLOY -->
+<section id="deploy">
+  <h2><span class="n">11</span>Free-first deployment</h2>
+  <p class="sub">Build at zero cost. Run production for about the price of a coffee a month. Upgrade one component at a time as clients grow, with no rewrite.</p>
+  <div class="note warn"><span class="tag">Why not Vercel's free plan</span><p>Vercel's Hobby plan is for personal, non-commercial use, and managing paying clients is commercial. Its free cron jobs also run too rarely for scheduled publishing. Vercel Pro works well but costs more; Cloudflare's paid Workers plan covers hosting, cron, queues and higher limits for a small flat fee.</p></div>
+  <div class="stages">
+    <div class="stage"><span class="who">Build</span><span class="cost">$0</span><ul><li>Local Postgres in Docker</li><li>Free Neon or Supabase database for previews</li><li>R2 free tier</li><li>Cloudflare free plan for previews</li><li>Small capped AI budget for testing</li></ul></div>
+    <div class="stage"><span class="who">10 clients</span><span class="cost">~$5 <small>/ month + AI</small></span><ul><li>Cloudflare Workers paid plan: app, worker, cron, queues</li><li>Free-tier Postgres</li><li>R2 free tier</li><li>Nightly database dump to R2 via GitHub Actions</li><li>socialpreneur.in with DNS on Cloudflare (free)</li></ul></div>
+    <div class="stage"><span class="who">25 to 50 clients</span><span class="cost">~$30 to 50 <small>/ month + AI</small></span><ul><li>Paid Postgres with point-in-time recovery</li><li>R2 beyond free storage as video grows</li><li>Sentry paid only if error volume needs it</li></ul></div>
+    <div class="stage"><span class="who">100+ clients</span><span class="cost">Scale by part</span><ul><li>Larger Postgres, read replica for analytics</li><li>Separate queue for metric sync</li><li>Monthly partitions on metrics tables</li><li>Redis if rate limit traffic justifies it</li></ul></div>
+  </div>
+  <p>Not included above: AI usage (prepaid OpenAI credit) and the domain, already purchased. No paid social API plans are used. Figures are approximate; confirm current prices when signing up.</p>
+  <h3>Things free tiers do not give you</h3>
+  <ul>
+    <li><b>Backups:</b> free database tiers offer little or no restore history. The nightly encrypted dump to R2 is part of Phase 0, with a restore drill before launch.</li>
+    <li><b>Storage headroom:</b> images for 10 clients use roughly half a gigabyte a month; video uses far more. Archived creatives older than 12 months move to a cheaper storage class.</li>
+    <li><b>Inactive pausing:</b> some free databases pause after days without traffic. The minute cron keeps it active, but move to paid before relying on it for paying clients.</li>
+    <li><b>Required public pages:</b> privacy policy, terms of service and a data deletion page on your domain. All platform reviews ask for them.</li>
+  </ul>
+</section>
+
+<!-- 12 PHASES -->
+<section id="phases">
+  <h2><span class="n">12</span>Development phases</h2>
+  <p class="sub">Each phase ends with a working, tested slice you can use with demo clients. Week estimates assume one developer working with AI assistance and will shift as we learn.</p>
+  <div class="phases">
+    <div class="phase"><header><b>Phase 0 · Foundations</b><span class="mono">weeks 1 to 2</span></header>
+      <p>Monorepo, CI, environment validation, design tokens and base components, Better Auth, agencies, members, roles, clients, client switcher, <code>requireAccess</code> gate, scoped repositories, audit log, command palette shell, backups. Demo data for five clients: B2B SaaS, manufacturing, healthcare, ecommerce, digital agency. One demo client posts in Tamil and English.</p>
+      <p><b>In parallel, long lead (done by you, under VTurnU Digital Solutions LLP):</b> register Meta (covers Facebook, Instagram, Threads), LinkedIn, Pinterest and X developer apps; publish privacy, terms and data deletion pages on socialpreneur.in; start Meta Business Verification.</p>
+      <p class="exit"><strong>Exit:</strong> cross-client isolation suite passes for every route.</p></div>
+    <div class="phase"><header><b>Phase 1 · Brand Brain</b><span class="mono">weeks 3 to 4</span></header>
+      <p>Profile, products, services, personas, competitors, facts ledger with verification, rules, document upload and text extraction, website analysis with review queue, AI gateway basics, Brand Card.</p>
+      <p class="exit"><strong>Exit:</strong> Brand Cards for all demo clients; no AI write path to the profile.</p></div>
+    <div class="phase"><header><b>Phase 2 · Accounts and Integration Health</b><span class="mono">weeks 4 to 6</span></header>
+      <p>OAuth for all six platforms against test accounts, token vault, discovery and assignment, refresh sweeper, health checks and states, assisted mode fallback.</p>
+      <p class="exit"><strong>Exit:</strong> real test accounts connected; expiry, revocation and missing permission states reproduced and shown correctly.</p></div>
+    <div class="phase"><header><b>Phase 3 · Strategy, ideas and special days</b><span class="mono">weeks 6 to 8</span></header>
+      <p>Categories, mix editor, templates, special days dataset for global, India and Tamil Nadu observances for 2026 and 2027, relevance cache, idea engine with tone actions, embeddings and similarity warnings, content inbox.</p>
+      <p class="exit"><strong>Exit:</strong> manufacturing and SaaS demo clients receive different, relevant special days; repeated ideas are flagged.</p></div>
+    <div class="phase"><header><b>Phase 4 · Calendar and content</b><span class="mono">weeks 8 to 11</span></header>
+      <p>Month, week and list views, drag to reschedule, generator with slotting and health score, post editor, versions and restore, platform variants and validation, claims checker, creative briefs, media library with client guard, basic campaigns and UTM builder.</p>
+      <p class="exit"><strong>Exit:</strong> generated month matches the mix within one post per category; cross-client media attach refused by the database.</p></div>
+    <div class="phase"><header><b>Phase 5 · Workflow and approvals</b><span class="mono">weeks 11 to 13</span></header>
+      <p>Status machine, plan approval and post approval, approval links, comments, notifications, automatic tasks, dashboard and Today view, mobile review screens.</p>
+      <p class="exit"><strong>Exit:</strong> editing an approved post reopens review; client approves a full month on a phone.</p></div>
+    <div class="phase"><header><b>Phase 6 · Scheduling and publishing</b><span class="mono">weeks 13 to 16</span></header>
+      <p>Preflight checks, jobs, cron and queue, adapters' publish steps, retries and backoff, rate limit windows, reconciliation, failure explanations, pause switches, publishing history.</p>
+      <p class="exit"><strong>Exit:</strong> fault injection (worker killed mid-publish, duplicate delivery, 429, expired token, timeout after send) produces zero duplicate and zero wrong-account posts.</p></div>
+    <div class="phase"><header><b>Phase 7 · Analytics and first report</b><span class="mono">weeks 16 to 18</span></header>
+      <p>Metric sync schedule, post and account metrics, "not provided" handling, basic monthly report with data sufficiency labels.</p>
+      <p class="exit"><strong>Exit:</strong> numbers match each platform's own dashboard for test posts.</p></div>
+    <div class="phase"><header><b>Pilot and launch</b><span class="mono">weeks 18 to 20</span></header>
+      <p>Two real clients for two weeks in parallel with your current process, then all ten. Accounts switch from assisted to API publishing as platform approvals arrive.</p></div>
+    <div class="phase"><header><b>Version 1.5</b><span class="mono">after launch</span></header>
+      <p>AI assistant, global search, AI insights, bulk actions, tasks and workload, client health, calendar templates, full repurposing, productivity metrics, Row Level Security, email notifications.</p></div>
+  </div>
+</section>
+
+<!-- QUESTIONS -->
+<section id="questions">
+  <h2><span class="n">✓</span>Confirmed decisions</h2>
+  <p class="sub">Answered on 14 Sep 2026. Where anything earlier on this page differs, these win.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Topic</th><th>Decision</th><th>Effect on the build</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Product</td><td>Social Preneur, at app.socialpreneur.in</td><td>Privacy, terms and data deletion pages on socialpreneur.in; DNS moves to Cloudflare</td></tr>
+      <tr><td class="k">Business</td><td>VTurnU Digital Solutions LLP</td><td>Legal name used for Meta Business Verification, the LinkedIn API application, and in the website footer and policies</td></tr>
+      <tr><td class="k">Page access</td><td>Team already holds admin roles on client pages</td><td>Accounts connected from an owner-level login; a Meta system user is evaluated in Phase 2 so connections do not depend on one employee</td></tr>
+      <tr><td class="k">Social APIs</td><td>Free official APIs only</td><td>Facebook, Instagram, Threads, LinkedIn and Pinterest on free APIs; X on free access with a monthly cap counter; anything unavailable runs in Assisted mode</td></tr>
+      <tr><td class="k">Hosting</td><td>About $5 a month accepted</td><td>Cloudflare Workers paid plan for app, worker, cron and queues</td></tr>
+      <tr><td class="k">AI</td><td>OpenAI, paid API key with $5 prepaid credit</td><td>Default provider for generation and embeddings; provider layer stays swappable</td></tr>
+      <tr><td class="k">Languages</td><td>English and Tamil</td><td>Language per post, multilingual similarity, Tamil Nadu special days, platform-accurate counters</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Actions only you can take</h3>
+  <p>These need your identity, business documents or payment details.</p>
+  <ol class="steps">
+    <li><b>Install Node.js LTS</b> on this computer. It is not installed yet and is required before any code runs.</li>
+    <li><b>Set a monthly budget limit</b> on your OpenAI project. Keep the API key private: it goes into a local environment file on your computer, never into chat or code.</li>
+    <li><b>Create a Cloudflare account</b>, add socialpreneur.in and switch the domain's nameservers to Cloudflare.</li>
+    <li><b>Create a free Neon or Supabase account</b> for the database.</li>
+    <li><b>Create a Meta developer account</b> and a Meta business portfolio for VTurnU Digital Solutions LLP, then start Business Verification.</li>
+    <li><b>Create developer accounts</b> for LinkedIn (linked to the VTurnU LinkedIn company page), Pinterest (business account) and X.</li>
+  </ol>
+  <footer>Social Preneur blueprint v0.2. Platform limits, review requirements and prices noted here change over time and are re-verified when each module is built.</footer>
+</section>
+</main>
+</div>

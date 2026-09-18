@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --ground: #f5f6f3;
+  --surface: #ffffff;
+  --sunk: #eceee9;
+  --ink: #141a17;
+  --muted: #5b6661;
+  --line: #dde2dd;
+  --accent: #0f6b57;
+  --accent-ink: #0b4f40;
+  --accent-soft: #dcefe8;
+  --warn: #8a5a10;
+  --warn-soft: #f7ebd6;
+  --crit: #a8392b;
+  --crit-soft: #f6e0dc;
+  --info: #2d5a87;
+  --info-soft: #e1eaf4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #0f1412;
+    --surface: #161d1a;
+    --sunk: #1c2521;
+    --ink: #e2e9e6;
+    --muted: #9aa8a2;
+    --line: #2b3632;
+    --accent: #52c2a3;
+    --accent-ink: #8fdcc6;
+    --accent-soft: #163a30;
+    --warn: #e3ae5c;
+    --warn-soft: #352918;
+    --crit: #ef8c7e;
+    --crit-soft: #3b201c;
+    --info: #8db6e0;
+    --info-soft: #1b2a3a;
+  }
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-crit: var(--crit);
+  --color-crit-soft: var(--crit-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-plex-sans), "Noto Sans Tamil", "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-schibsted), var(--font-plex-sans), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Consolas, monospace;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
