@@ -160,6 +160,11 @@ export default function ClientsPage() {
         {success && (
           <div style={{ padding: "10px 12px", background: "#efe", color: "#3c3", borderRadius: "8px", fontSize: "14px" }}>
             {success}
+            <div style={{ marginTop: "8px" }}>
+              <a href={`/clients/test_client`} style={{ color: "#3c3", textDecoration: "underline", fontSize: "13px" }}>
+                Link social media pages for this client →
+              </a>
+            </div>
           </div>
         )}
 
