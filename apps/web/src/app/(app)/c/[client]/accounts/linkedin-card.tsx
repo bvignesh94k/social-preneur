@@ -19,8 +19,8 @@ export function LinkedInCard({
   if (!configured) {
     return (
       <div className="rounded-md bg-sunk px-3 py-2 text-xs text-muted">
-        Real connection needs <code>LINKEDIN_CLIENT_ID</code>, <code>LINKEDIN_CLIENT_SECRET</code> and{" "}
-        <code>TOKEN_ENCRYPTION_KEY</code> in the environment.
+        LinkedIn is awaiting approval, so posts are prepared here and published by hand. Add the page below to
+        keep this client&rsquo;s details together.
       </div>
     );
   }
