@@ -73,7 +73,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                       }}
                     />
                   ) : (
-                    <AccountAddForm slug={slug} platform={platform} />
+                    <AccountAddForm slug={slug} platform={platform} clientName={client.name} />
                   ))}
               </section>
             );
@@ -104,7 +104,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                   }}
                 />
               ) : (
-                <AccountAddForm slug={slug} platform={platform} />
+                <AccountAddForm slug={slug} platform={platform} clientName={client.name} />
               )}
             </section>
           );

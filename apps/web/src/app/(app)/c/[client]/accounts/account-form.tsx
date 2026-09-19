@@ -93,7 +93,7 @@ export function AccountEditForm({
   );
 }
 
-export function AccountAddForm({ slug, platform }: { slug: string; platform: SocialPlatform }) {
+export function AccountAddForm({ slug, platform, clientName }: { slug: string; platform: SocialPlatform; clientName: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(addSocialAccountAction, undefined);
 
   return (
@@ -107,7 +107,7 @@ export function AccountAddForm({ slug, platform }: { slug: string; platform: Soc
           name="displayName"
           required
           defaultValue={state?.values?.displayName}
-          placeholder="Kaveri Industrial Labels"
+          placeholder={clientName}
           className={inputClass}
         />
       </Field>

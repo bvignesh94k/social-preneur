@@ -38,7 +38,7 @@ export function ClientForm() {
           defaultValue={values?.name}
           aria-invalid={Boolean(errors.name)}
           aria-describedby={errors.name ? "name-error" : undefined}
-          placeholder="Kaveri Industrial Labels"
+          placeholder="Client business name"
           className={inputClass}
         />
         <FieldError id="name-error" message={errors.name} />
