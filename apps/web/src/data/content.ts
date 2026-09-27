@@ -16,6 +16,7 @@ import {
   listIdeas,
   listOfferings,
   listPostsInRange,
+  listSocialAccounts,
   requireClientBySlug,
   type PostWithVariants,
 } from "@sp/db";
@@ -51,6 +52,7 @@ export const getContentWorkspace = cache(async (slug: string) => {
     can: {
       edit: isAllowed(actor, "content.edit", target),
       schedule: isAllowed(actor, "post.schedule", target),
+      publish: isAllowed(actor, "post.publishNow", target),
       strategy: isAllowed(actor, "strategy.edit", target),
       generate: isAllowed(actor, "ideas.generate", target),
     },
@@ -106,12 +108,19 @@ export async function getPostDetail(slug: string, postId: string) {
     throw error;
   }
 
-  const offerings = await listOfferings(db, scope);
+  const [offerings, accounts] = await Promise.all([listOfferings(db, scope), listSocialAccounts(db, scope)]);
 
   return {
     client,
     can,
     post,
+    accounts: accounts.map(({ platform, displayName, connectionMode, health, healthNote }) => ({
+      platform,
+      displayName,
+      connectionMode,
+      health,
+      healthNote,
+    })),
     today: todayIn(client.timezone),
     offerings: offerings
       .filter((offering) => offering.status === "active")

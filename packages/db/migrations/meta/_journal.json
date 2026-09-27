@@ -64,6 +64,13 @@
       "when": 1789619091769,
       "tag": "0008_giant_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790530332462,
+      "tag": "0009_publishing",
+      "breakpoints": true
     }
   ]
 }

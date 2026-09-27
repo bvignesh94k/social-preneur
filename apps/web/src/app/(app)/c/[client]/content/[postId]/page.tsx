@@ -4,6 +4,7 @@ import {
   STATUS_LABELS,
   hasBlocker,
   timeIn,
+  todayIn,
   type SocialPlatform,
 } from "@sp/core";
 import type { Metadata } from "next";
@@ -14,6 +15,7 @@ import { getPostDetail } from "@/data/content";
 import { POST_STATUS_TONE, SOCIAL_PLATFORM_LABEL } from "@/lib/labels";
 import { duplicatePostAction, setPostStatusAction } from "../actions";
 import { PostForm } from "./post-form";
+import { PublishingPanel } from "./publishing-panel";
 import { ScheduleForm } from "./schedule-form";
 import { VariantForm } from "./variant-form";
 
@@ -21,7 +23,7 @@ export const metadata: Metadata = { title: "Post" };
 
 export default async function PostPage({ params }: PageProps<"/c/[client]/content/[postId]">) {
   const { client: slug, postId } = await params;
-  const { client, can, post, offerings, today } = await getPostDetail(slug, postId);
+  const { client, can, post, accounts, offerings, today } = await getPostDetail(slug, postId);
 
   const variantFor = (platform: SocialPlatform) => post.variants.find((variant) => variant.platform === platform);
 
@@ -127,12 +129,22 @@ export default async function PostPage({ params }: PageProps<"/c/[client]/conten
           defaultTime={post.scheduledAt ? timeIn(client.timezone, post.scheduledAt) : "09:30"}
           scheduledFor={
             post.scheduledAt
-              ? `${post.plannedDate ?? ""} at ${timeIn(client.timezone, post.scheduledAt)}`.trim()
+              ? `${todayIn(client.timezone, post.scheduledAt)} at ${timeIn(client.timezone, post.scheduledAt)}`
               : null
           }
           blockers={blockers}
         />
       )}
+
+      <PublishingPanel
+        slug={slug}
+        postId={postId}
+        postStatus={post.status}
+        variants={post.variants}
+        accounts={accounts}
+        timezone={client.timezone}
+        canPublish={can.publish}
+      />
 
       <section className="grid gap-4">
         <div>
@@ -146,13 +158,15 @@ export default async function PostPage({ params }: PageProps<"/c/[client]/conten
         <div className="grid gap-4 lg:grid-cols-2">
           {SOCIAL_PLATFORMS.map((platform) => {
             const variant = variantFor(platform);
+            const locked =
+              post.status === "published" || variant?.status === "published" || variant?.status === "queued";
             return (
               <VariantForm
                 key={platform}
                 slug={slug}
                 postId={postId}
                 platform={platform}
-                readOnly={!can.edit}
+                readOnly={!can.edit || locked}
                 values={{
                   caption: variant?.caption ?? post.caption ?? "",
                   title: variant?.title ?? "",

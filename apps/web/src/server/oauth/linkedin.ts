@@ -40,8 +40,10 @@ export function buildAuthorizeUrl(config: Pick<LinkedInOAuthConfig, "clientId" |
 
 export class LinkedInApiError extends Error {
   constructor(
-    readonly step: "token_exchange" | "list_organizations" | "organization_lookup",
+    readonly step: "token_exchange" | "list_organizations" | "organization_lookup" | "create_post",
     message: string,
+    // The HTTP status LinkedIn answered with, or null when no answer arrived.
+    readonly status: number | null = null,
   ) {
     super(message);
     this.name = "LinkedInApiError";
@@ -92,7 +94,7 @@ export async function exchangeCodeForToken(config: LinkedInOAuthConfig, code: st
   };
 }
 
-function authedHeaders(accessToken: string): HeadersInit {
+function authedHeaders(accessToken: string): Record<string, string> {
   return {
     authorization: `Bearer ${accessToken}`,
     "x-restli-protocol-version": "2.0.0",
@@ -146,4 +148,75 @@ export async function getOrganizationName(
   }
 
   return json.localizedName ?? `LinkedIn Page ${organizationId}`;
+}
+
+// LinkedIn reads post text as "little" markup, where these characters mean
+// something. Left unescaped, a caption with brackets or an @ can be rejected
+// or come out mangled, so every one is escaped to stay plain text.
+const LITTLE_RESERVED = /[\\|{}@[\]()<>#*_~]/g;
+// A #word the writer typed, kept unescaped so LinkedIn turns it into a real
+// hashtag. Needs a letter, so "#5" or "C#" stay plain text.
+const INLINE_HASHTAG = /((?<![\p{L}\p{M}\p{N}_])#(?=[\p{M}\p{N}]*\p{L})[\p{L}\p{M}\p{N}]+)/u;
+
+export function escapeLittleText(text: string): string {
+  return text.replace(LITTLE_RESERVED, "\\$&");
+}
+
+export function formatLinkedInCommentary(caption: string, hashtags: string[], linkUrl: string | null): string {
+  const body = caption
+    .trim()
+    .split(INLINE_HASHTAG)
+    .map((part, index) => (index % 2 === 1 ? part : escapeLittleText(part)))
+    .join("");
+
+  const parts = [body];
+  if (linkUrl && !caption.includes(linkUrl)) parts.push(escapeLittleText(linkUrl));
+
+  const lowerCaption = caption.toLowerCase();
+  const tags = hashtags
+    .map((tag) => tag.replace(/[^\p{L}\p{M}\p{N}]/gu, ""))
+    .filter((tag) => /\p{L}/u.test(tag) && !lowerCaption.includes(`#${tag.toLowerCase()}`));
+  if (tags.length > 0) parts.push([...new Set(tags)].map((tag) => `#${tag}`).join(" "));
+
+  return parts.filter(Boolean).join("\n\n");
+}
+
+export function linkedInPostUrl(postUrn: string): string {
+  return `https://www.linkedin.com/feed/update/${postUrn}/`;
+}
+
+// Publishes a text post on a Company Page. Verified against LinkedIn's Posts
+// API docs (li-lms-2026-09) on 2026-09-27: 201 Created, new post URN in the
+// x-restli-id header.
+export async function createOrganizationPost(
+  accessToken: string,
+  post: { authorUrn: string; commentary: string },
+  doFetch: FetchLike = fetch,
+): Promise<{ postUrn: string | null }> {
+  let response: Response;
+  try {
+    response = await doFetch(`${API_BASE}/posts`, {
+      method: "POST",
+      headers: { ...authedHeaders(accessToken), "content-type": "application/json" },
+      body: JSON.stringify({
+        author: post.authorUrn,
+        commentary: post.commentary,
+        visibility: "PUBLIC",
+        distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+        lifecycleState: "PUBLISHED",
+        isReshareDisabledByAuthor: false,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (error) {
+    throw new LinkedInApiError("create_post", error instanceof Error ? error.message : String(error), null);
+  }
+
+  if (response.status !== 201) {
+    const json = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new LinkedInApiError("create_post", json.message ?? `HTTP ${response.status}`, response.status);
+  }
+
+  // 201 means the post exists even if the ID header is somehow missing.
+  return { postUrn: response.headers.get("x-restli-id") };
 }

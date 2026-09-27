@@ -17,13 +17,16 @@ import {
 import {
   createPost,
   duplicatePost,
+  markVariantPublished,
   movePost,
   removeVariant,
+  retryVariant,
   saveContentMix,
   saveVariant,
   setIdeaStatus,
   setPostSchedule,
   setPostStatus,
+  skipVariant,
   updatePost,
 } from "@sp/db";
 import { revalidatePath } from "next/cache";
@@ -275,6 +278,56 @@ export async function removeVariantAction(_prev: FormState, formData: FormData):
       text(formData, "postId"),
       platform(formData),
     );
+  } catch (error) {
+    return failure(error, snapshot(formData));
+  }
+
+  refresh(slug);
+  return { ok: true };
+}
+
+export async function markVariantPublishedAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const slug = text(formData, "slug");
+  const values = snapshot(formData);
+
+  try {
+    const { actor } = await requireWorkspace();
+    await markVariantPublished(
+      await getDb(),
+      actor,
+      await clientIdFor(slug),
+      text(formData, "postId"),
+      platform(formData),
+      { url: text(formData, "url") || null },
+    );
+  } catch (error) {
+    return failure(error, values);
+  }
+
+  refresh(slug);
+  return { ok: true };
+}
+
+export async function skipVariantAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const slug = text(formData, "slug");
+
+  try {
+    const { actor } = await requireWorkspace();
+    await skipVariant(await getDb(), actor, await clientIdFor(slug), text(formData, "postId"), platform(formData));
+  } catch (error) {
+    return failure(error, snapshot(formData));
+  }
+
+  refresh(slug);
+  return { ok: true };
+}
+
+export async function retryVariantAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const slug = text(formData, "slug");
+
+  try {
+    const { actor } = await requireWorkspace();
+    await retryVariant(await getDb(), actor, await clientIdFor(slug), text(formData, "postId"), platform(formData));
   } catch (error) {
     return failure(error, snapshot(formData));
   }

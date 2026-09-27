@@ -1,0 +1,32 @@
+name: Publish scheduled posts
+
+# Vercel's free plan only allows daily cron jobs, so the publisher is
+# triggered from here instead. GitHub may start scheduled runs a few minutes
+# late under load; the client's late publish window absorbs that.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Run the publisher
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice::CRON_SECRET is not set in this repository's secrets, so nothing was published."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://socialpreneur.in/api/cron/publish

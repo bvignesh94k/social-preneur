@@ -163,6 +163,13 @@ export const postVariants = pgTable(
     issues: jsonb("issues").$type<VariantIssue[]>().notNull().default([]),
     publishedUrl: text("published_url"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    // The platform's own ID for the published post, e.g. urn:li:share:123.
+    externalPostId: text("external_post_id"),
+    publishError: text("publish_error"),
+    publishAttempts: integer("publish_attempts").notNull().default(0),
+    // Set when the publisher takes the job. A claim that never resolves is
+    // failed rather than retried, since the platform may already have the post.
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -181,5 +188,6 @@ export const postVariants = pgTable(
     unique("post_variants_post_platform_uq").on(t.postId, t.platform),
     unique("post_variants_client_id_uq").on(t.clientId, t.id),
     index("post_variants_client_status_idx").on(t.clientId, t.status),
+    index("post_variants_platform_status_idx").on(t.platform, t.status),
   ],
 );

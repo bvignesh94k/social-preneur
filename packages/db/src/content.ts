@@ -569,6 +569,31 @@ export async function duplicatePost(
 
 // ---------- Platform versions ----------
 
+// Editing a version that is live or mid-publish would reset it to ready and
+// publish it a second time, so both are refused.
+async function refuseIfLocked(
+  tx: Database,
+  scope: ClientScope,
+  postId: string,
+  platform: SocialPlatform,
+  verb: "edited" | "removed",
+): Promise<void> {
+  const [existing] = await tx
+    .select({ status: postVariants.status })
+    .from(postVariants)
+    .where(
+      and(eq(postVariants.clientId, scope.clientId), eq(postVariants.postId, postId), eq(postVariants.platform, platform)),
+    )
+    .limit(1)
+    .for("update");
+  if (existing?.status === "queued") {
+    throw new InvalidInputError(`This version is being published right now, so it cannot be ${verb}.`);
+  }
+  if (existing?.status === "published") {
+    throw new InvalidInputError(`This version is already published, so it cannot be ${verb}. Duplicate the post to reuse it.`);
+  }
+}
+
 export interface VariantInput {
   caption: string;
   title?: string | null;
@@ -608,6 +633,7 @@ export async function saveVariant(
       .limit(1);
     if (!parent) throw new NotFoundError("Post");
     if (parent.status === "published") throw new InvalidInputError("This post is already published.");
+    await refuseIfLocked(tx, scope, postId, platform, "edited");
 
     const values = {
       agencyId: scope.agencyId,
@@ -664,6 +690,7 @@ export async function removeVariant(
   const scope = await requireClientAccess(db, actor, "content.edit", clientId);
 
   await db.transaction(async (tx) => {
+    await refuseIfLocked(tx, scope, postId, platform, "removed");
     const [row] = await tx
       .delete(postVariants)
       .where(

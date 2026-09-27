@@ -100,6 +100,15 @@ export const POST_STATUS_TONE: Record<PostStatus, "neutral" | "ok" | "warn" | "c
   archived: "neutral",
 };
 
+export const VARIANT_STATUS_TONE: Record<VariantStatus, "neutral" | "ok" | "warn" | "crit" | "info"> = {
+  pending: "warn",
+  ready: "info",
+  queued: "info",
+  published: "ok",
+  failed: "crit",
+  skipped: "neutral",
+};
+
 export const VARIANT_STATUS_LABEL: Record<VariantStatus, string> = {
   pending: "Not ready",
   ready: "Ready",

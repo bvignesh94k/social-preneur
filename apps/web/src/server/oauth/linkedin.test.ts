@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAuthorizeUrl,
+  createOrganizationPost,
+  escapeLittleText,
+  formatLinkedInCommentary,
   exchangeCodeForToken,
   getOrganizationName,
   LinkedInApiError,
@@ -115,5 +118,81 @@ describe("getOrganizationName", () => {
     const fetch = async () =>
       jsonResponse({ message: "Viewer don't have permission to the ADMIN_ONLY VisibilityReduction" }, 403);
     await expect(getOrganizationName("tok_123", "2414183", fetch)).rejects.toBeInstanceOf(LinkedInApiError);
+  });
+});
+
+describe("formatLinkedInCommentary", () => {
+  it("escapes LinkedIn's reserved characters so captions stay plain text", () => {
+    // Ends in one backslash, which must come out doubled.
+    expect(escapeLittleText("Save 20% (limited) @ our store_1 [new] <b> *now* ~ | {x} \\")).toBe(
+      String.raw`Save 20% \(limited\) \@ our store\_1 \[new\] \<b\> \*now\* \~ \| \{x\} \\`,
+    );
+  });
+
+  it("keeps hashtags the writer typed as real hashtags, including Tamil", () => {
+    expect(formatLinkedInCommentary("Labels that last #packaging (and more) #லேபிள்", [], null)).toBe(
+      String.raw`Labels that last #packaging \(and more\) #லேபிள்`,
+    );
+  });
+
+  it("does not treat numbers or C# as hashtags", () => {
+    expect(formatLinkedInCommentary("Order #5 in C#", [], null)).toBe(String.raw`Order \#5 in C\#`);
+  });
+
+  it("adds the link and the version's hashtags on their own lines, without repeats", () => {
+    expect(
+      formatLinkedInCommentary("Read the guide #Labels", ["labels", "cold storage", "#shipping", "123"], "https://k.test/a_b"),
+    ).toBe(["Read the guide #Labels", String.raw`https://k.test/a\_b`, "#coldstorage #shipping"].join("\n\n"));
+  });
+
+  it("does not repeat a link already in the caption", () => {
+    expect(formatLinkedInCommentary("See https://k.test", [], "https://k.test")).toBe("See https://k.test");
+  });
+});
+
+describe("createOrganizationPost", () => {
+  it("sends a public text post as the Page and returns LinkedIn's post ID", async () => {
+    let request: { url: string; init?: RequestInit } | undefined;
+    const fetch = async (url: string, init?: RequestInit) => {
+      request = { url, init };
+      return new Response(null, { status: 201, headers: { "x-restli-id": "urn:li:share:99" } });
+    };
+
+    const result = await createOrganizationPost("tok", { authorUrn: "urn:li:organization:42", commentary: "Hello" }, fetch);
+
+    expect(result).toEqual({ postUrn: "urn:li:share:99" });
+    expect(request?.url).toBe("https://api.linkedin.com/rest/posts");
+    expect(request?.init?.method).toBe("POST");
+    const headers = request?.init?.headers as Record<string, string>;
+    expect(headers.authorization).toBe("Bearer tok");
+    expect(headers["x-restli-protocol-version"]).toBe("2.0.0");
+    expect(headers["linkedin-version"]).toMatch(/^\d{6}$/);
+    expect(JSON.parse(String(request?.init?.body))).toEqual({
+      author: "urn:li:organization:42",
+      commentary: "Hello",
+      visibility: "PUBLIC",
+      distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
+    });
+  });
+
+  it("reports LinkedIn's status and message when it refuses", async () => {
+    const fetch = async () => jsonResponse({ message: "Not enough permissions" }, 403);
+    const error = await createOrganizationPost("tok", { authorUrn: "urn:li:organization:42", commentary: "x" }, fetch).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(LinkedInApiError);
+    expect(error).toMatchObject({ step: "create_post", status: 403, message: "Not enough permissions" });
+  });
+
+  it("reports no status when LinkedIn could not be reached", async () => {
+    const fetch = async () => {
+      throw new TypeError("fetch failed");
+    };
+    const error = await createOrganizationPost("tok", { authorUrn: "urn:li:organization:42", commentary: "x" }, fetch).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toMatchObject({ step: "create_post", status: null });
   });
 });

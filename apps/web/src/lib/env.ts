@@ -26,6 +26,8 @@ const schema = z.object({
   // Encrypts stored OAuth tokens at rest. Generate with:
   //   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
   TOKEN_ENCRYPTION_KEY: z.string().trim().optional(),
+  // Shared with whatever triggers /api/cron/publish; without it nothing publishes.
+  CRON_SECRET: z.string().trim().min(32, "CRON_SECRET must be at least 32 characters.").optional(),
   LINKEDIN_CLIENT_ID: z.string().trim().optional(),
   LINKEDIN_CLIENT_SECRET: z.string().trim().optional(),
 });
