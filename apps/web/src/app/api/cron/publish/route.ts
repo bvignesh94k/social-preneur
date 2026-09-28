@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { env } from "@/lib/env";
-import { runFacebookPublishing, runLinkedInPublishing } from "@/server/publishing";
+import { runFacebookPublishing, runLinkedInPublishing, runThreadsPublishing } from "@/server/publishing";
 
 export const maxDuration = 60;
 
@@ -31,5 +31,6 @@ export async function GET(request: Request): Promise<Response> {
   const facebook = env.META_APP_SECRET
     ? await runFacebookPublishing(db, { encryptionKey: env.TOKEN_ENCRYPTION_KEY, appSecret: env.META_APP_SECRET })
     : null;
-  return NextResponse.json({ linkedin, facebook });
+  const threads = await runThreadsPublishing(db, { encryptionKey: env.TOKEN_ENCRYPTION_KEY });
+  return NextResponse.json({ linkedin, facebook, threads });
 }

@@ -1,5 +1,5 @@
 import { InvalidInputError, NotFoundError, type Actor, type PostStatus, type SocialPlatform } from "@sp/core";
-import { and, asc, eq, inArray, isNotNull, isNull, lt, lte, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, sql, type SQL } from "drizzle-orm";
 import { requireClientAccess, type ClientScope } from "./access";
 import { recordAudit } from "./audit";
 import type { Database } from "./client";
@@ -351,6 +351,56 @@ export async function flagAccountForReconnect(db: Database, accountId: string, n
       after: { note: note.slice(0, 500) },
     });
   });
+}
+
+export interface RefreshableAccount {
+  id: string;
+  clientId: string;
+  externalAccountId: string;
+  accessTokenEncrypted: string;
+}
+
+// Connected accounts whose token is still valid but needs renewing soon.
+// Threads long-lived tokens expire after 60 days, unlike LinkedIn's
+// fixed-length ones or Facebook's Page tokens, which never expire. A token
+// that has already expired is excluded: refreshing it would only fail, and
+// the normal publish-failure path already flags it for reconnecting.
+export async function listAccountsNeedingTokenRefresh(
+  db: Database,
+  platform: SocialPlatform,
+  now: Date,
+  before: Date,
+): Promise<RefreshableAccount[]> {
+  const rows = await db
+    .select({
+      id: socialAccounts.id,
+      clientId: socialAccounts.clientId,
+      externalAccountId: socialAccounts.externalAccountId,
+      accessTokenEncrypted: socialAccounts.accessTokenEncrypted,
+    })
+    .from(socialAccounts)
+    .where(
+      and(
+        eq(socialAccounts.platform, platform),
+        eq(socialAccounts.connectionMode, "automatic"),
+        ne(socialAccounts.health, "disconnected"),
+        isNotNull(socialAccounts.accessTokenEncrypted),
+        isNotNull(socialAccounts.tokenExpiresAt),
+        gte(socialAccounts.tokenExpiresAt, now),
+        lt(socialAccounts.tokenExpiresAt, before),
+      ),
+    );
+  return rows.filter(
+    (row): row is RefreshableAccount => row.externalAccountId !== null && row.accessTokenEncrypted !== null,
+  );
+}
+
+export async function recordTokenRefresh(
+  db: Database,
+  accountId: string,
+  update: { accessTokenEncrypted: string; tokenExpiresAt: Date | null },
+): Promise<void> {
+  await db.update(socialAccounts).set(update).where(eq(socialAccounts.id, accountId));
 }
 
 // ---------- Used by people on the post page ----------

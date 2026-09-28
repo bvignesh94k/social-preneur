@@ -22,7 +22,7 @@ export const getAccountsWorkspace = cache(async (slug: string) => {
 
   const accounts = await listSocialAccounts(db, found.scope);
   const now = new Date();
-  const connectionFor = (platform: "linkedin" | "facebook") => {
+  const connectionFor = (platform: "linkedin" | "facebook" | "threads") => {
     const account = accounts.find((row) => row.platform === platform);
     return account ? toConnectionView(account, now) : null;
   };
@@ -39,6 +39,10 @@ export const getAccountsWorkspace = cache(async (slug: string) => {
     facebook: {
       configured: Boolean(env.META_APP_ID && env.META_APP_SECRET && env.TOKEN_ENCRYPTION_KEY),
       connection: connectionFor("facebook"),
+    },
+    threads: {
+      configured: Boolean(env.THREADS_APP_ID && env.THREADS_APP_SECRET && env.TOKEN_ENCRYPTION_KEY),
+      connection: connectionFor("threads"),
     },
   };
 });

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Accounts" };
 export default async function AccountsPage({ params, searchParams }: PageProps<"/c/[client]/accounts">) {
   const slug = (await params).client;
   const query = await searchParams;
-  const { client, byPlatform, linkedin, facebook } = await getAccountsWorkspace(slug);
+  const { client, byPlatform, linkedin, facebook, threads } = await getAccountsWorkspace(slug);
 
   const single = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -29,10 +29,16 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
       notConfiguredText:
         "Facebook is not switched on yet, so posts are prepared here and published by hand. Add the page below to keep this client’s details together.",
     },
+    threads: {
+      ...threads,
+      connectHref: `/api/oauth/threads/connect?client=${slug}`,
+      notConfiguredText:
+        "Threads is not switched on yet, so posts are prepared here and published by hand. Add the page below to keep this client’s details together.",
+    },
   } as const;
-  const live = (["linkedin", "facebook"] as const).filter((platform) => connectable[platform].configured);
+  const live = (["linkedin", "facebook", "threads"] as const).filter((platform) => connectable[platform].configured);
 
-  const results = (["linkedin", "facebook"] as const).map((platform) => ({
+  const results = (["linkedin", "facebook", "threads"] as const).map((platform) => ({
     platform,
     result: single(query[platform]),
   }));
@@ -87,7 +93,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
             <AccountAddForm slug={slug} platform={platform} clientName={client.name} />
           );
 
-          if (platform === "linkedin" || platform === "facebook") {
+          if (platform === "linkedin" || platform === "facebook" || platform === "threads") {
             const oauth = connectable[platform];
             return (
               <section key={platform} className="grid gap-3 rounded-lg border border-line bg-surface p-4">

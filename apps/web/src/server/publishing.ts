@@ -3,8 +3,10 @@ import {
   claimDuePublishJobs,
   expireMissedPublishJobs,
   flagAccountForReconnect,
+  listAccountsNeedingTokenRefresh,
   recordPublishFailure,
   recordPublishSuccess,
+  recordTokenRefresh,
   recoverStalePublishJobs,
   type Database,
   type PublishJob,
@@ -17,7 +19,8 @@ import {
   type FetchLike,
 } from "./oauth/linkedin";
 import { MetaApiError, createPagePost, facebookPostUrl, formatFacebookMessage } from "./oauth/meta";
-import { decryptToken } from "./oauth/token-crypto";
+import { ThreadsApiError, createThreadsPost, formatThreadsText, refreshThreadsToken } from "./oauth/threads";
+import { decryptToken, encryptToken } from "./oauth/token-crypto";
 
 // Kept small so one run finishes well inside a serverless time limit; anything
 // left over is picked up by the next run.
@@ -104,6 +107,65 @@ export function classifyMetaError(error: MetaApiError): Failure {
     return { message: UNCLEAR("Facebook"), retryable: false, reconnect: false };
   }
   return { message: `Facebook rejected the post: ${error.message}`, retryable: false, reconnect: false };
+}
+
+// Graph API errors carry their meaning in the error code rather than the HTTP
+// status, same as Facebook, since Threads runs on the same Graph infrastructure.
+export function classifyThreadsError(error: ThreadsApiError): Failure {
+  const { code, status } = error;
+  if (code === 190 || status === 401) {
+    return { message: `Threads no longer accepts this connection. ${reconnect("Threads")}`, retryable: false, reconnect: true };
+  }
+  if (code === 10 || (code !== null && code >= 200 && code < 300) || status === 403) {
+    return {
+      message: "Threads refused to post as this profile. Reconnect Threads on the Accounts tab, then retry the post.",
+      retryable: false,
+      reconnect: true,
+    };
+  }
+  if (code === 4 || code === 17 || code === 32 || code === 613 || code === 80001) {
+    return { message: "Threads' rate limit was reached. It will be tried again automatically.", retryable: true, reconnect: false };
+  }
+  if (error.step === "container_status" && /did not finish preparing/.test(error.message)) {
+    return { message: "Threads took too long to prepare the post. It will be tried again automatically.", retryable: true, reconnect: false };
+  }
+  if (status === null || status >= 500 || code === 1 || code === 2) {
+    return { message: UNCLEAR("Threads"), retryable: false, reconnect: false };
+  }
+  return { message: `Threads rejected the post: ${error.message}`, retryable: false, reconnect: false };
+}
+
+// Threads tokens expire after about 60 days and must be refreshed, unlike
+// LinkedIn's or Facebook's. Run this well ahead of that: refreshing gives 60
+// more days, and the publisher runs often enough that a wide window is cheap.
+const THREADS_REFRESH_WINDOW_DAYS = 10;
+
+async function refreshExpiringThreadsTokens(db: Database, encryptionKey: string, now: Date, fetchLike?: FetchLike): Promise<void> {
+  const dueBefore = new Date(now.getTime() + THREADS_REFRESH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const accounts = await listAccountsNeedingTokenRefresh(db, "threads", now, dueBefore);
+
+  for (const account of accounts) {
+    let token: string;
+    try {
+      token = decryptToken(account.accessTokenEncrypted, encryptionKey);
+    } catch {
+      await flagAccountForReconnect(db, account.id, `The saved Threads connection could not be read. ${reconnect("Threads")}`);
+      continue;
+    }
+
+    try {
+      const refreshed = await refreshThreadsToken(token, fetchLike);
+      await recordTokenRefresh(db, account.id, {
+        accessTokenEncrypted: encryptToken(refreshed.accessToken, encryptionKey),
+        tokenExpiresAt: refreshed.expiresAt,
+      });
+    } catch (error) {
+      const failure = error instanceof ThreadsApiError ? classifyThreadsError(error) : null;
+      if (failure?.reconnect) await flagAccountForReconnect(db, account.id, failure.message);
+      // A retryable or unclassified failure is left for the next run's refresh
+      // attempt; the token is still valid today, so nothing is blocked yet.
+    }
+  }
 }
 
 function readToken(job: PublishJob, label: string, encryptionKey: string, now: Date): string | Failure {
@@ -213,6 +275,30 @@ export async function runFacebookPublishing(
       return { externalPostId: postId, url: postId ? facebookPostUrl(postId) : null };
     } catch (error) {
       if (error instanceof MetaApiError) return classifyMetaError(error);
+      throw error;
+    }
+  });
+}
+
+export async function runThreadsPublishing(
+  db: Database,
+  options: { encryptionKey: string; now?: Date; fetch?: FetchLike },
+): Promise<PublishRunSummary> {
+  const now = options.now ?? new Date();
+  await refreshExpiringThreadsTokens(db, options.encryptionKey, now, options.fetch);
+
+  return runPlatform(db, "threads", now, async (job) => {
+    const token = readToken(job, "Threads", options.encryptionKey, now);
+    if (typeof token !== "string") return token;
+    try {
+      const { postId, url } = await createThreadsPost(
+        token,
+        { userId: job.account.externalAccountId, text: formatThreadsText(job.caption, job.hashtags) },
+        options.fetch,
+      );
+      return { externalPostId: postId, url };
+    } catch (error) {
+      if (error instanceof ThreadsApiError) return classifyThreadsError(error);
       throw error;
     }
   });

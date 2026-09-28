@@ -34,6 +34,8 @@ const schema = z.object({
   META_LOGIN_CONFIG_ID: z.string().trim().optional(),
   LINKEDIN_CLIENT_ID: z.string().trim().optional(),
   LINKEDIN_CLIENT_SECRET: z.string().trim().optional(),
+  THREADS_APP_ID: z.string().trim().optional(),
+  THREADS_APP_SECRET: z.string().trim().optional(),
 });
 
 export const env = schema.parse(process.env);

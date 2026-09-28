@@ -10,9 +10,11 @@ import {
   claimDuePublishJobs,
   expireMissedPublishJobs,
   flagAccountForReconnect,
+  listAccountsNeedingTokenRefresh,
   markVariantPublished,
   recordPublishFailure,
   recordPublishSuccess,
+  recordTokenRefresh,
   recoverStalePublishJobs,
   retryVariant,
   skipVariant,
@@ -285,5 +287,75 @@ describe("what people can do on the post page", () => {
     await expect(
       markVariantPublished(db, f.actors.outsider, f.clients.kaveri.id, post.id, "linkedin", {}),
     ).rejects.toThrow();
+  });
+});
+
+describe("listAccountsNeedingTokenRefresh", () => {
+  async function connectThreads(clientId: string, tokenExpiresAt: Date | null) {
+    return saveOAuthConnection(db, f.actors.admin, clientId, "threads", {
+      displayName: "@kaveri_labels",
+      externalAccountId: "789",
+      accessTokenEncrypted: "iv:tag:data",
+      refreshTokenEncrypted: null,
+      tokenExpiresAt,
+      grantedScopes: ["threads_basic", "threads_content_publish"],
+    });
+  }
+
+  it("finds a connected account whose token expires before the cutoff", async () => {
+    await connectThreads(f.clients.kaveri.id, minutes(60 * 24));
+    const due = await listAccountsNeedingTokenRefresh(db, "threads", AT, minutes(60 * 24 * 2));
+    expect(due).toHaveLength(1);
+    expect(due[0]).toMatchObject({ clientId: f.clients.kaveri.id, externalAccountId: "789", accessTokenEncrypted: "iv:tag:data" });
+  });
+
+  it("leaves alone tokens that are not close to expiring, other platforms, and disconnected accounts", async () => {
+    await connectThreads(f.clients.kaveri.id, minutes(60 * 24 * 90));
+    await connectLinkedIn(f.clients.northwind.id);
+    expect(await listAccountsNeedingTokenRefresh(db, "threads", AT, minutes(60 * 24 * 2))).toEqual([]);
+
+    const expiring = await connectThreads(f.clients.northwind.id, minutes(60 * 24));
+    await db.update(socialAccounts).set({ health: "disconnected" }).where(eq(socialAccounts.id, expiring.id));
+    expect(await listAccountsNeedingTokenRefresh(db, "threads", AT, minutes(60 * 24 * 2))).toEqual([]);
+  });
+
+  it("excludes a token that has already expired, since refreshing it would only fail", async () => {
+    await connectThreads(f.clients.kaveri.id, minutes(-1));
+    expect(await listAccountsNeedingTokenRefresh(db, "threads", AT, minutes(60 * 24 * 2))).toEqual([]);
+  });
+
+  it("does not consider a token that never expires, like a Facebook Page token", async () => {
+    await saveOAuthConnection(db, f.actors.admin, f.clients.kaveri.id, "facebook", {
+      displayName: "Kaveri Industrial Labels",
+      externalAccountId: "555",
+      accessTokenEncrypted: "iv:tag:data",
+      refreshTokenEncrypted: null,
+      tokenExpiresAt: null,
+      grantedScopes: ["pages_manage_posts"],
+    });
+    expect(await listAccountsNeedingTokenRefresh(db, "facebook", AT, minutes(60 * 24 * 365))).toEqual([]);
+  });
+});
+
+describe("recordTokenRefresh", () => {
+  it("stores the new token and expiry without touching anything else", async () => {
+    const account = await saveOAuthConnection(db, f.actors.admin, f.clients.kaveri.id, "threads", {
+      displayName: "@kaveri_labels",
+      externalAccountId: "789",
+      accessTokenEncrypted: "iv:tag:old",
+      refreshTokenEncrypted: null,
+      tokenExpiresAt: minutes(1),
+      grantedScopes: ["threads_basic"],
+    });
+
+    await recordTokenRefresh(db, account.id, { accessTokenEncrypted: "iv:tag:new", tokenExpiresAt: minutes(60 * 24 * 60) });
+
+    const row = (await db.select().from(socialAccounts)).find((r) => r.id === account.id);
+    expect(row).toMatchObject({
+      accessTokenEncrypted: "iv:tag:new",
+      tokenExpiresAt: minutes(60 * 24 * 60),
+      displayName: "@kaveri_labels",
+      health: "ok",
+    });
   });
 });

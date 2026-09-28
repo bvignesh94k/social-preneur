@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { appendUnusedHashtags } from "./text";
 
 // Graph API version, verified against Meta's docs on 2026-09-28.
 export const META_GRAPH_VERSION = "v25.0";
@@ -155,13 +156,7 @@ export async function listManagedPages(
 }
 
 export function formatFacebookMessage(caption: string, hashtags: string[]): string {
-  const lowerCaption = caption.toLowerCase();
-  const tags = hashtags
-    .map((tag) => tag.replace(/[^\p{L}\p{M}\p{N}]/gu, ""))
-    .filter((tag) => /\p{L}/u.test(tag) && !lowerCaption.includes(`#${tag.toLowerCase()}`));
-  const parts = [caption.trim()];
-  if (tags.length > 0) parts.push([...new Set(tags)].map((tag) => `#${tag}`).join(" "));
-  return parts.filter(Boolean).join("\n\n");
+  return appendUnusedHashtags(caption, hashtags);
 }
 
 export function facebookPostUrl(postId: string): string {
