@@ -1,3 +1,4 @@
+import type { SocialPlatform } from "@sp/core";
 import {
   claimDuePublishJobs,
   expireMissedPublishJobs,
@@ -15,13 +16,18 @@ import {
   linkedInPostUrl,
   type FetchLike,
 } from "./oauth/linkedin";
+import { MetaApiError, createPagePost, facebookPostUrl, formatFacebookMessage } from "./oauth/meta";
 import { decryptToken } from "./oauth/token-crypto";
 
 // Kept small so one run finishes well inside a serverless time limit; anything
 // left over is picked up by the next run.
 const BATCH_SIZE = 10;
 
-const RECONNECT = "Reconnect LinkedIn for this client on the Accounts tab, then retry the post.";
+const reconnect = (label: string) =>
+  `Reconnect ${label} for this client on the Accounts tab, then retry the post.`;
+
+const UNCLEAR = (label: string) =>
+  `${label} did not give a clear answer, so it is not certain the post went out. Check the client's Page, and retry only if it is not there.`;
 
 export interface PublishRunSummary {
   recovered: number;
@@ -38,13 +44,20 @@ interface Failure {
   reconnect: boolean;
 }
 
+interface Published {
+  externalPostId: string | null;
+  url: string | null;
+}
+
+type Outcome = Published | Failure;
+
 // What each LinkedIn answer means for the post. Only answers that prove the
 // post was NOT created are retried; anything ambiguous goes to a person, since
 // posting twice on a client's page is worse than posting late.
 export function classifyLinkedInError(error: LinkedInApiError): Failure {
   const { status } = error;
   if (status === 401) {
-    return { message: `LinkedIn no longer accepts this connection. ${RECONNECT}`, retryable: false, reconnect: true };
+    return { message: `LinkedIn no longer accepts this connection. ${reconnect("LinkedIn")}`, retryable: false, reconnect: true };
   }
   if (status === 403) {
     return {
@@ -61,64 +74,70 @@ export function classifyLinkedInError(error: LinkedInApiError): Failure {
     return { message: "LinkedIn was busy. It will be tried again automatically.", retryable: true, reconnect: false };
   }
   if (status === null || status >= 500) {
-    return {
-      message:
-        "LinkedIn did not give a clear answer, so it is not certain the post went out. Check the client's Page, and retry only if it is not there.",
-      retryable: false,
-      reconnect: false,
-    };
+    return { message: UNCLEAR("LinkedIn"), retryable: false, reconnect: false };
   }
   return { message: `LinkedIn rejected the post: ${error.message}`, retryable: false, reconnect: false };
 }
 
-async function publishOne(
-  job: PublishJob,
-  options: { encryptionKey: string; now: Date; fetch?: FetchLike },
-): Promise<{ postUrn: string | null } | Failure> {
-  if (job.account.tokenExpiresAt && job.account.tokenExpiresAt <= options.now) {
-    return { message: `The LinkedIn connection has expired. ${RECONNECT}`, retryable: false, reconnect: true };
+// Graph API errors carry their meaning in the error code rather than the HTTP
+// status. Same rule as LinkedIn: retry only when the post certainly was not made.
+export function classifyMetaError(error: MetaApiError): Failure {
+  const { code, status } = error;
+  if (code === 190 || status === 401) {
+    return { message: `Facebook no longer accepts this connection. ${reconnect("Facebook")}`, retryable: false, reconnect: true };
   }
+  if (code === 10 || (code !== null && code >= 200 && code < 300) || status === 403) {
+    return {
+      message:
+        "Facebook refused to post on this Page. Make sure the connected login can still create posts on it, reconnect Facebook on the Accounts tab, then retry the post.",
+      retryable: false,
+      reconnect: true,
+    };
+  }
+  if (code === 4 || code === 17 || code === 32 || code === 613 || code === 80001) {
+    return { message: "Facebook's rate limit was reached. It will be tried again automatically.", retryable: true, reconnect: false };
+  }
+  if (code === 506) {
+    return { message: "Facebook refused this as a duplicate of a recent post on the Page.", retryable: false, reconnect: false };
+  }
+  if (status === null || status >= 500 || code === 1 || code === 2) {
+    return { message: UNCLEAR("Facebook"), retryable: false, reconnect: false };
+  }
+  return { message: `Facebook rejected the post: ${error.message}`, retryable: false, reconnect: false };
+}
 
-  let accessToken: string;
+function readToken(job: PublishJob, label: string, encryptionKey: string, now: Date): string | Failure {
+  if (job.account.tokenExpiresAt && job.account.tokenExpiresAt <= now) {
+    return { message: `The ${label} connection has expired. ${reconnect(label)}`, retryable: false, reconnect: true };
+  }
   try {
-    accessToken = decryptToken(job.account.accessTokenEncrypted, options.encryptionKey);
+    return decryptToken(job.account.accessTokenEncrypted, encryptionKey);
   } catch {
-    return { message: `The saved LinkedIn connection could not be read. ${RECONNECT}`, retryable: false, reconnect: true };
-  }
-
-  try {
-    return await createOrganizationPost(
-      accessToken,
-      {
-        authorUrn: job.account.externalAccountId,
-        commentary: formatLinkedInCommentary(job.caption, job.hashtags, job.linkUrl),
-      },
-      options.fetch,
-    );
-  } catch (error) {
-    if (error instanceof LinkedInApiError) return classifyLinkedInError(error);
-    throw error;
+    return { message: `The saved ${label} connection could not be read. ${reconnect(label)}`, retryable: false, reconnect: true };
   }
 }
 
-export async function runLinkedInPublishing(
+// The loop every platform shares: clear up interrupted and late jobs, claim
+// what is due, publish one at a time, and record each result.
+async function runPlatform(
   db: Database,
-  options: { encryptionKey: string; now?: Date; fetch?: FetchLike },
+  platform: SocialPlatform,
+  now: Date,
+  publishOne: (job: PublishJob) => Promise<Outcome>,
 ): Promise<PublishRunSummary> {
-  const now = options.now ?? new Date();
   const summary: PublishRunSummary = { recovered: 0, expired: 0, claimed: 0, published: 0, retrying: 0, failed: 0 };
 
-  summary.recovered = await recoverStalePublishJobs(db, "linkedin", now);
-  summary.expired = await expireMissedPublishJobs(db, "linkedin", now);
+  summary.recovered = await recoverStalePublishJobs(db, platform, now);
+  summary.expired = await expireMissedPublishJobs(db, platform, now);
 
-  const jobs = await claimDuePublishJobs(db, "linkedin", now, BATCH_SIZE);
+  const jobs = await claimDuePublishJobs(db, platform, now, BATCH_SIZE);
   summary.claimed = jobs.length;
   const flagged = new Set<string>();
 
   for (const job of jobs) {
-    let result: Awaited<ReturnType<typeof publishOne>>;
+    let result: Outcome;
     try {
-      result = await publishOne(job, { ...options, now });
+      result = await publishOne(job);
     } catch {
       result = {
         message:
@@ -128,12 +147,8 @@ export async function runLinkedInPublishing(
       };
     }
 
-    if ("postUrn" in result) {
-      await recordPublishSuccess(db, job.variantId, {
-        externalPostId: result.postUrn,
-        url: result.postUrn ? linkedInPostUrl(result.postUrn) : null,
-        at: new Date(),
-      });
+    if ("externalPostId" in result) {
+      await recordPublishSuccess(db, job.variantId, { ...result, at: new Date() });
       summary.published++;
       continue;
     }
@@ -149,4 +164,56 @@ export async function runLinkedInPublishing(
   }
 
   return summary;
+}
+
+export async function runLinkedInPublishing(
+  db: Database,
+  options: { encryptionKey: string; now?: Date; fetch?: FetchLike },
+): Promise<PublishRunSummary> {
+  const now = options.now ?? new Date();
+  return runPlatform(db, "linkedin", now, async (job) => {
+    const token = readToken(job, "LinkedIn", options.encryptionKey, now);
+    if (typeof token !== "string") return token;
+    try {
+      const { postUrn } = await createOrganizationPost(
+        token,
+        {
+          authorUrn: job.account.externalAccountId,
+          commentary: formatLinkedInCommentary(job.caption, job.hashtags, job.linkUrl),
+        },
+        options.fetch,
+      );
+      return { externalPostId: postUrn, url: postUrn ? linkedInPostUrl(postUrn) : null };
+    } catch (error) {
+      if (error instanceof LinkedInApiError) return classifyLinkedInError(error);
+      throw error;
+    }
+  });
+}
+
+export async function runFacebookPublishing(
+  db: Database,
+  options: { encryptionKey: string; appSecret: string; now?: Date; fetch?: FetchLike },
+): Promise<PublishRunSummary> {
+  const now = options.now ?? new Date();
+  return runPlatform(db, "facebook", now, async (job) => {
+    const token = readToken(job, "Facebook", options.encryptionKey, now);
+    if (typeof token !== "string") return token;
+    try {
+      const { postId } = await createPagePost(
+        token,
+        options.appSecret,
+        {
+          pageId: job.account.externalAccountId,
+          message: formatFacebookMessage(job.caption, job.hashtags),
+          link: job.linkUrl,
+        },
+        options.fetch,
+      );
+      return { externalPostId: postId, url: postId ? facebookPostUrl(postId) : null };
+    } catch (error) {
+      if (error instanceof MetaApiError) return classifyMetaError(error);
+      throw error;
+    }
+  });
 }

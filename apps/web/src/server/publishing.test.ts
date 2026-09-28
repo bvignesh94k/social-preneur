@@ -4,7 +4,8 @@ import { createTestDatabase, seedTenancy, type TenancyFixture } from "@sp/db/tes
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encryptToken } from "./oauth/token-crypto";
-import { runLinkedInPublishing } from "./publishing";
+import { appSecretProof } from "./oauth/meta";
+import { runFacebookPublishing, runLinkedInPublishing } from "./publishing";
 
 const KEY = randomBytes(32).toString("base64");
 const AT = new Date("2026-10-01T04:00:00Z");
@@ -137,5 +138,84 @@ describe("runLinkedInPublishing", () => {
 
     expect(linkedIn.calls).toHaveLength(0);
     expect((await linkedInVariant(post.id)).publishError).toMatch(/could not be read/);
+  });
+});
+
+describe("runFacebookPublishing", () => {
+  const APP_SECRET = "app-secret";
+
+  async function setUpFacebook(link: string | null = "https://kaveri.test/guide") {
+    const account = await saveOAuthConnection(db, f.actors.admin, f.clients.kaveri.id, "facebook", {
+      displayName: "Kaveri Industrial Labels",
+      externalAccountId: "555",
+      accessTokenEncrypted: encryptToken("page-token", KEY),
+      refreshTokenEncrypted: null,
+      // Page tokens do not expire.
+      tokenExpiresAt: null,
+      grantedScopes: ["pages_manage_posts"],
+    });
+    const post = await createPost(db, f.actors.admin, f.clients.kaveri.id, { title: "Labels", category: "educational" });
+    await saveVariant(db, f.actors.admin, f.clients.kaveri.id, post.id, "facebook", {
+      caption: "Labels that survive (cold) storage",
+      hashtags: ["packaging"],
+      linkUrl: link,
+    });
+    await setPostSchedule(db, f.actors.admin, f.clients.kaveri.id, post.id, AT);
+    return { account, post };
+  }
+
+  const run = (fetch: (url: string, init?: RequestInit) => Promise<Response>) =>
+    runFacebookPublishing(db, { encryptionKey: KEY, appSecret: APP_SECRET, now: NOW, fetch });
+
+  const graphError = (code: number) =>
+    new Response(JSON.stringify({ error: { message: `Graph error ${code}`, code } }), { status: 400 });
+
+  it("posts to the Page feed with the Page token and records the link", async () => {
+    const { post } = await setUpFacebook();
+    const facebook = fakeLinkedIn(() => new Response(JSON.stringify({ id: "555_777" }), { status: 200 }));
+
+    const summary = await run(facebook.fetch);
+
+    expect(summary).toMatchObject({ claimed: 1, published: 1, failed: 0 });
+    expect(facebook.calls[0]!.url).toMatch(/\/555\/feed$/);
+    const body = Object.fromEntries(new URLSearchParams(String(facebook.calls[0]!.init!.body)));
+    expect(body).toEqual({
+      message: "Labels that survive (cold) storage\n\n#packaging",
+      published: "true",
+      access_token: "page-token",
+      appsecret_proof: appSecretProof("page-token", APP_SECRET),
+      link: "https://kaveri.test/guide",
+    });
+    expect(await linkedInVariant(post.id)).toMatchObject({
+      status: "published",
+      externalPostId: "555_777",
+      publishedUrl: "https://www.facebook.com/555_777",
+    });
+  });
+
+  it("flags the Page for reconnecting when Facebook rejects the token", async () => {
+    const { post, account } = await setUpFacebook();
+    await run(fakeLinkedIn(() => graphError(190)).fetch);
+
+    expect((await linkedInVariant(post.id)).publishError).toMatch(/Reconnect Facebook/);
+    const row = (await db.select().from(socialAccounts)).find((r) => r.id === account.id);
+    expect(row!.health).toBe("needs_attention");
+  });
+
+  it("retries a Facebook rate limit but not a duplicate", async () => {
+    const { post } = await setUpFacebook();
+    expect((await run(fakeLinkedIn(() => graphError(4)).fetch)).retrying).toBe(1);
+    expect((await linkedInVariant(post.id)).status).toBe("ready");
+
+    const second = await run(fakeLinkedIn(() => graphError(506)).fetch);
+    expect(second).toMatchObject({ failed: 1, retrying: 0 });
+    expect((await linkedInVariant(post.id)).publishError).toMatch(/duplicate/);
+  });
+
+  it("does not retry when Facebook's answer is unclear", async () => {
+    const { post } = await setUpFacebook(null);
+    const summary = await run(fakeLinkedIn(() => graphError(2)).fetch);
+    expect(summary).toMatchObject({ failed: 1, retrying: 0 });
+    expect((await linkedInVariant(post.id)).publishError).toMatch(/not certain the post went out/);
   });
 });

@@ -12,7 +12,7 @@ import { retryVariantAction, skipVariantAction } from "../actions";
 import { MarkPostedForm } from "./mark-posted-form";
 
 // Platforms the publisher can post to on its own once connected.
-const AUTOMATIC_PLATFORMS: readonly SocialPlatform[] = ["linkedin"];
+const AUTOMATIC_PLATFORMS: readonly SocialPlatform[] = ["linkedin", "facebook"];
 
 type Account = Pick<SocialAccount, "platform" | "displayName" | "connectionMode" | "health" | "healthNote">;
 

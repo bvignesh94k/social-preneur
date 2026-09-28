@@ -28,6 +28,10 @@ const schema = z.object({
   TOKEN_ENCRYPTION_KEY: z.string().trim().optional(),
   // Shared with whatever triggers /api/cron/publish; without it nothing publishes.
   CRON_SECRET: z.string().trim().min(32, "CRON_SECRET must be at least 32 characters.").optional(),
+  META_APP_ID: z.string().trim().optional(),
+  META_APP_SECRET: z.string().trim().optional(),
+  // From the Meta app's Facebook Login for Business > Configurations.
+  META_LOGIN_CONFIG_ID: z.string().trim().optional(),
   LINKEDIN_CLIENT_ID: z.string().trim().optional(),
   LINKEDIN_CLIENT_SECRET: z.string().trim().optional(),
 });

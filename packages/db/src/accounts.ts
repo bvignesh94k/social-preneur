@@ -5,7 +5,7 @@ import {
   type Actor,
   type SocialPlatform,
 } from "@sp/core";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { requireClientAccess, type ClientScope } from "./access";
 import { recordAudit } from "./audit";
 import type { Database } from "./client";
@@ -21,6 +21,31 @@ export async function listSocialAccounts(db: Database, scope: ClientScope): Prom
   const rows = await db.select().from(socialAccounts).where(eq(socialAccounts.clientId, scope.clientId));
   const order = new Map(SOCIAL_PLATFORMS.map((platform, index) => [platform, index]));
   return rows.sort((a, b) => (order.get(a.platform) ?? 0) - (order.get(b.platform) ?? 0));
+}
+
+// Which of these platform account IDs another client in the same agency has
+// already connected. Returns IDs only, never which client, since the caller
+// may not be allowed to see that client.
+export async function findAccountsConnectedElsewhere(
+  db: Database,
+  scope: ClientScope,
+  platform: SocialPlatform,
+  externalIds: string[],
+): Promise<Set<string>> {
+  if (externalIds.length === 0) return new Set();
+  const rows = await db
+    .select({ externalAccountId: socialAccounts.externalAccountId })
+    .from(socialAccounts)
+    .where(
+      and(
+        eq(socialAccounts.agencyId, scope.agencyId),
+        eq(socialAccounts.platform, platform),
+        eq(socialAccounts.connectionMode, "automatic"),
+        inArray(socialAccounts.externalAccountId, externalIds),
+        ne(socialAccounts.clientId, scope.clientId),
+      ),
+    );
+  return new Set(rows.map((row) => row.externalAccountId).filter((id): id is string => id !== null));
 }
 
 export interface SocialAccountInput {
@@ -129,7 +154,8 @@ export interface OAuthConnectionInput {
   externalAccountId: string;
   accessTokenEncrypted: string;
   refreshTokenEncrypted: string | null;
-  tokenExpiresAt: Date;
+  // Null for tokens that do not expire, such as Facebook Page tokens.
+  tokenExpiresAt: Date | null;
   grantedScopes: string[];
 }
 

@@ -6,7 +6,7 @@ import { cache } from "react";
 import { getDb } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/lib/session";
-import { toLinkedInView } from "@/server/oauth/linkedin-view";
+import { toConnectionView } from "@/server/oauth/connection-view";
 
 export const getAccountsWorkspace = cache(async (slug: string) => {
   const { actor } = await requireWorkspace();
@@ -22,16 +22,23 @@ export const getAccountsWorkspace = cache(async (slug: string) => {
 
   const accounts = await listSocialAccounts(db, found.scope);
   const now = new Date();
+  const connectionFor = (platform: "linkedin" | "facebook") => {
+    const account = accounts.find((row) => row.platform === platform);
+    return account ? toConnectionView(account, now) : null;
+  };
 
   return {
+    actor,
+    scope: found.scope,
     client: { id: found.client.id, name: found.client.name, slug: found.client.slug },
     byPlatform: new Map(accounts.map((account) => [account.platform, account])),
     linkedin: {
       configured: Boolean(env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET && env.TOKEN_ENCRYPTION_KEY),
-      connection: (() => {
-        const account = accounts.find((row) => row.platform === "linkedin");
-        return account ? toLinkedInView(account, now) : null;
-      })(),
+      connection: connectionFor("linkedin"),
+    },
+    facebook: {
+      configured: Boolean(env.META_APP_ID && env.META_APP_SECRET && env.TOKEN_ENCRYPTION_KEY),
+      connection: connectionFor("facebook"),
     },
   };
 });

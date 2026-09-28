@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { env } from "@/lib/env";
-import { runLinkedInPublishing } from "@/server/publishing";
+import { runFacebookPublishing, runLinkedInPublishing } from "@/server/publishing";
 
 export const maxDuration = 60;
 
@@ -25,6 +25,11 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ message: "Publishing is not set up: TOKEN_ENCRYPTION_KEY is missing." }, { status: 503 });
   }
 
-  const linkedin = await runLinkedInPublishing(await getDb(), { encryptionKey: env.TOKEN_ENCRYPTION_KEY });
-  return NextResponse.json({ linkedin });
+  const db = await getDb();
+  const linkedin = await runLinkedInPublishing(db, { encryptionKey: env.TOKEN_ENCRYPTION_KEY });
+  // Facebook signs every call with the app secret, so it only runs once that is set.
+  const facebook = env.META_APP_SECRET
+    ? await runFacebookPublishing(db, { encryptionKey: env.TOKEN_ENCRYPTION_KEY, appSecret: env.META_APP_SECRET })
+    : null;
+  return NextResponse.json({ linkedin, facebook });
 }
