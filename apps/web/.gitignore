@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# files uploaded in local development (production uses Vercel Blob)
+/public/uploads/

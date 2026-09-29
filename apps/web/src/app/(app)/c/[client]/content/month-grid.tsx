@@ -9,7 +9,9 @@ import {
 } from "@sp/core";
 import type { PostWithVariants } from "@sp/db";
 import Link from "next/link";
+import { ActionButton } from "@/components/action-button";
 import { PLATFORM_SHORT } from "@/lib/labels";
+import { createPostAction } from "./actions";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -24,14 +26,22 @@ const DOT: Record<PostStatus, string> = {
   archived: "bg-muted",
 };
 
-function PostChip({ post, slug }: { post: PostWithVariants; slug: string }) {
+function PostChip({ post, slug, timezone }: { post: PostWithVariants; slug: string; timezone: string }) {
   const platforms = post.variants.map((variant) => PLATFORM_SHORT[variant.platform]).join(" ");
+  const cover = post.media.find((item) => item.kind === "image");
+  const time = post.scheduledAt
+    ? new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: timezone }).format(post.scheduledAt)
+    : null;
 
   return (
     <Link
       href={`/c/${slug}/content/${post.id}`}
-      className="group grid gap-0.5 rounded border border-line bg-surface px-1.5 py-1 hover:border-accent"
+      className="group grid gap-0.5 overflow-hidden rounded border border-line bg-surface px-1.5 py-1 hover:border-accent"
     >
+      {cover && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={cover.url} alt="" loading="lazy" className="-mx-1.5 -mt-1 mb-0.5 h-12 w-[calc(100%+0.75rem)] max-w-none object-cover" />
+      )}
       <span className="flex items-center gap-1.5">
         <span
           aria-hidden
@@ -41,6 +51,7 @@ function PostChip({ post, slug }: { post: PostWithVariants; slug: string }) {
         <span className="truncate text-xs font-medium leading-tight">{post.title}</span>
       </span>
       <span className="truncate text-[10px] text-muted">
+        {time ? `${time} · ` : ""}
         {platforms || CATEGORY_LABELS[post.category]}
       </span>
       <span className="sr-only">
@@ -56,12 +67,16 @@ export function MonthGrid({
   month,
   today,
   byDay,
+  canCreate,
+  timezone,
 }: {
   slug: string;
   year: number;
   month: number;
   today: string;
   byDay: Map<string, PostWithVariants[]>;
+  canCreate: boolean;
+  timezone: string;
 }) {
   const weeks = monthWeeks(year, month);
 
@@ -101,19 +116,21 @@ export function MonthGrid({
                   >
                     {dayOfMonth(date)}
                   </span>
-                  {!outside && (
-                    <Link
-                      href={`/c/${slug}/content?new=${date}`}
-                      aria-label={`Add a post on ${date}`}
-                      className="rounded px-1 text-xs leading-none text-muted hover:bg-sunk hover:text-ink"
+                  {!outside && canCreate && date >= today && (
+                    <ActionButton
+                      action={createPostAction}
+                      fields={{ slug, category: "educational", plannedDate: date }}
+                      pendingText="…"
+                      className="rounded px-1.5 text-sm leading-none text-muted hover:bg-accent-soft hover:text-accent-ink"
                     >
-                      +
-                    </Link>
+                      <span aria-hidden>+</span>
+                      <span className="sr-only">Create a post on {date}</span>
+                    </ActionButton>
                   )}
                 </div>
                 <div className="grid gap-1">
                   {posts.map((post) => (
-                    <PostChip key={post.id} post={post} slug={slug} />
+                    <PostChip key={post.id} post={post} slug={slug} timezone={timezone} />
                   ))}
                 </div>
               </div>
@@ -133,7 +150,7 @@ export function MonthGrid({
               </p>
               <div className="grid gap-1.5">
                 {(byDay.get(date) ?? []).map((post) => (
-                  <PostChip key={post.id} post={post} slug={slug} />
+                  <PostChip key={post.id} post={post} slug={slug} timezone={timezone} />
                 ))}
               </div>
             </li>

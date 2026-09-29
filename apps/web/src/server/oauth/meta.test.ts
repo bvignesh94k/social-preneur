@@ -120,6 +120,24 @@ describe("createPagePost", () => {
     });
   });
 
+  it("posts a photo from its public address, with the link moved into the text", async () => {
+    const { calls, fetch } = recorder([json({ id: "photo_9", post_id: "10_30" })]);
+
+    const result = await createPagePost(
+      "page-token",
+      "secret",
+      { pageId: "10", message: "New labels", link: "https://k.test", imageUrl: "https://blob.test/a.jpg" },
+      fetch,
+    );
+
+    expect(result).toEqual({ postId: "10_30" });
+    expect(calls[0]!.url.pathname).toMatch(/\/10\/photos$/);
+    const body = new URLSearchParams(String(calls[0]!.init?.body));
+    expect(body.get("url")).toBe("https://blob.test/a.jpg");
+    expect(body.get("message")).toBe("New labels\n\nhttps://k.test");
+    expect(body.has("link")).toBe(false);
+  });
+
   it("leaves the link out when there is none", async () => {
     const { calls, fetch } = recorder([json({ id: "10_21" })]);
     await createPagePost("t", "s", { pageId: "10", message: "Hi", link: null }, fetch);

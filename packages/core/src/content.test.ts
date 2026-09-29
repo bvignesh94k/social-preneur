@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CONTENT_MIX,
+  autoPublishSupport,
+  mediaKindFor,
   checkVariant,
   compareMix,
   countPlatformCharacters,
@@ -88,5 +90,37 @@ describe("compareMix", () => {
   it("stays quiet when the month matches the targets", () => {
     const counts = { educational: 40, promotional: 20, social_proof: 15, engagement: 10, behind_the_scenes: 10, news: 5 };
     expect(mixWarnings(compareMix(counts, DEFAULT_CONTENT_MIX))).toEqual([]);
+  });
+});
+
+describe("autoPublishSupport", () => {
+  it("posts text on its own on the connected platforms", () => {
+    expect(autoPublishSupport("linkedin", [])).toBe("automatic");
+    expect(autoPublishSupport("threads", [])).toBe("automatic");
+  });
+
+  it("carries a single image on Facebook and Threads", () => {
+    expect(autoPublishSupport("facebook", [{ kind: "image" }])).toBe("automatic");
+    expect(autoPublishSupport("threads", [{ kind: "image" }])).toBe("automatic");
+  });
+
+  it("leaves video, several images, and LinkedIn images to a person", () => {
+    expect(autoPublishSupport("facebook", [{ kind: "video" }])).toBe("manual_media");
+    expect(autoPublishSupport("threads", [{ kind: "image" }, { kind: "image" }])).toBe("manual_media");
+    expect(autoPublishSupport("linkedin", [{ kind: "image" }])).toBe("manual_media");
+  });
+
+  it("never posts on its own where there is no connection yet", () => {
+    expect(autoPublishSupport("instagram", [{ kind: "image" }])).toBe("manual_platform");
+    expect(autoPublishSupport("x", [])).toBe("manual_platform");
+  });
+});
+
+describe("mediaKindFor", () => {
+  it("accepts the common image and video types only", () => {
+    expect(mediaKindFor("image/jpeg")).toBe("image");
+    expect(mediaKindFor("video/mp4")).toBe("video");
+    expect(mediaKindFor("image/gif")).toBeNull();
+    expect(mediaKindFor("application/pdf")).toBeNull();
   });
 });

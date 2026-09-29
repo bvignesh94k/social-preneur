@@ -1,6 +1,7 @@
 import {
   CONTENT_CATEGORIES,
   IDEA_STATUSES,
+  MEDIA_KINDS,
   POST_SOURCES,
   POST_STATUSES,
   SOCIAL_PLATFORMS,
@@ -33,6 +34,7 @@ export const postSource = pgEnum("post_source", POST_SOURCES);
 export const variantStatus = pgEnum("variant_status", VARIANT_STATUSES);
 export const ideaStatus = pgEnum("idea_status", IDEA_STATUSES);
 export const socialPlatform = pgEnum("social_platform", SOCIAL_PLATFORMS);
+export const mediaKind = pgEnum("media_kind", MEDIA_KINDS);
 
 export const contentMix = pgTable(
   "content_mix",
@@ -156,8 +158,8 @@ export const postVariants = pgTable(
     linkUrl: text("link_url"),
     firstComment: text("first_comment"),
     hashtags: textList("hashtags"),
-    // Until the media library exists this records that the creative is ready,
-    // which is what Instagram and Pinterest refuse to publish without.
+    // Mirrors whether the post has uploaded media, kept on each version so its
+    // checks (Instagram and Pinterest refuse to publish without it) stay local.
     hasMedia: boolean("has_media").notNull().default(false),
     status: variantStatus("status").notNull().default("pending"),
     issues: jsonb("issues").$type<VariantIssue[]>().notNull().default([]),
@@ -189,5 +191,43 @@ export const postVariants = pgTable(
     unique("post_variants_client_id_uq").on(t.clientId, t.id),
     index("post_variants_client_status_idx").on(t.clientId, t.status),
     index("post_variants_platform_status_idx").on(t.platform, t.status),
+  ],
+);
+
+// Images and videos attached to a post. The file itself lives in blob storage
+// at a public address, which is what the platforms fetch when publishing.
+export const postMedia = pgTable(
+  "post_media",
+  {
+    id: id(),
+    agencyId: uuid("agency_id").notNull(),
+    clientId: uuid("client_id").notNull(),
+    postId: uuid("post_id").notNull(),
+    kind: mediaKind("kind").notNull(),
+    url: text("url").notNull(),
+    // The storage key, kept so the file can be deleted once nothing uses it.
+    pathname: text("pathname").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    fileName: text("file_name"),
+    position: integer("position").notNull().default(0),
+    createdBy: text("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "post_media_post_fk",
+      columns: [t.clientId, t.postId],
+      foreignColumns: [posts.clientId, posts.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "post_media_client_fk",
+      columns: [t.agencyId, t.clientId],
+      foreignColumns: [clients.agencyId, clients.id],
+    }).onDelete("cascade"),
+    index("post_media_post_idx").on(t.postId, t.position),
+    index("post_media_url_idx").on(t.url),
   ],
 );

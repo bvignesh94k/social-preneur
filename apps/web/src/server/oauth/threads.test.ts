@@ -115,6 +115,24 @@ describe("createThreadsPost", () => {
     expect(new URLSearchParams(String(calls[3]!.init?.body)).get("creation_id")).toBe("container_1");
   }, 10_000);
 
+  it("creates an image container when the post has an image", async () => {
+    const { calls, fetch } = recorder([
+      json({ id: "container_2" }),
+      json({ status: "FINISHED" }),
+      json({ id: "media_2" }),
+      json({ permalink: "https://www.threads.net/@kaveri_labels/post/xyz" }),
+    ]);
+
+    await createThreadsPost("tok", { userId: "789", text: "Look", imageUrl: "https://blob.test/a.jpg" }, fetch);
+
+    const createBody = new URLSearchParams(String(calls[0]!.init?.body));
+    expect(Object.fromEntries(createBody)).toMatchObject({
+      media_type: "IMAGE",
+      image_url: "https://blob.test/a.jpg",
+      text: "Look",
+    });
+  });
+
   it("fails when the container errors out instead of finishing", async () => {
     const { fetch } = recorder([json({ id: "container_2" }), json({ status: "ERROR", error_message: "Something went wrong" })]);
     const error = await createThreadsPost("tok", { userId: "789", text: "x" }, fetch).catch((e: unknown) => e);

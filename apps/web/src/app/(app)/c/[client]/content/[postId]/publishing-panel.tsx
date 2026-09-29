@@ -1,4 +1,4 @@
-import type { PostStatus, SocialPlatform } from "@sp/core";
+import { autoPublishSupport, type MediaKind, type PostStatus, type SocialPlatform } from "@sp/core";
 import type { PostVariant, SocialAccount } from "@sp/db";
 import { ActionButton } from "@/components/action-button";
 import { Chip, buttonSecondarySm } from "@/components/ui";
@@ -11,31 +11,40 @@ import {
 import { retryVariantAction, skipVariantAction } from "../actions";
 import { MarkPostedForm } from "./mark-posted-form";
 
-// Platforms the publisher can post to on its own once connected.
-const AUTOMATIC_PLATFORMS: readonly SocialPlatform[] = ["linkedin", "facebook", "threads"];
-
 type Account = Pick<SocialAccount, "platform" | "displayName" | "connectionMode" | "health" | "healthNote">;
+type Media = { kind: MediaKind }[];
 
-function postsAutomatically(variant: PostVariant, account: Account | undefined): boolean {
-  return (
-    AUTOMATIC_PLATFORMS.includes(variant.platform) &&
-    account?.connectionMode === "automatic" &&
-    account.health !== "disconnected" &&
-    !variant.hasMedia
-  );
+function connected(account: Account | undefined): boolean {
+  return account?.connectionMode === "automatic" && account.health !== "disconnected";
 }
 
-function howItGoesOut(variant: PostVariant, account: Account | undefined, postStatus: PostStatus): string {
+export function postsAutomatically(variant: PostVariant, account: Account | undefined, media: Media): boolean {
+  // Creative marked ready but kept outside the app never goes out on its own.
+  if (variant.hasMedia && media.length === 0) return false;
+  return connected(account) && autoPublishSupport(variant.platform, media) === "automatic";
+}
+
+function howItGoesOut(variant: PostVariant, account: Account | undefined, postStatus: PostStatus, media: Media): string {
   const label = SOCIAL_PLATFORM_LABEL[variant.platform];
-  if (postsAutomatically(variant, account)) {
+  if (postsAutomatically(variant, account, media)) {
     return postStatus === "scheduled"
       ? `Posts to ${account!.displayName} on its own at the scheduled time.`
-      : `Posts to ${account!.displayName} on its own once the post is scheduled.`;
+      : `Posts to ${account!.displayName} on its own once you schedule it.`;
   }
-  if (AUTOMATIC_PLATFORMS.includes(variant.platform) && account?.connectionMode === "automatic" && variant.hasMedia) {
-    return `Has an image, which lives outside the app, so post it on ${label} by hand and mark it as posted.`;
+  const steps =
+    media.length > 0
+      ? `download the media above, post it on ${label}, then mark it as posted.`
+      : `post it on ${label}, then mark it as posted.`;
+  if (connected(account) && autoPublishSupport(variant.platform, media) === "manual_media") {
+    const what =
+      variant.platform === "linkedin"
+        ? "Posts with media"
+        : media.some((item) => item.kind === "video")
+          ? "Videos"
+          : "Posts with several images";
+    return `${what} are not sent to ${label} automatically yet. At the scheduled time, ${steps}`;
   }
-  return `Post it on ${label} by hand, then mark it as posted so the calendar stays accurate.`;
+  return `You post this one. At the scheduled time, ${steps}`;
 }
 
 export function PublishingPanel({
@@ -46,6 +55,7 @@ export function PublishingPanel({
   accounts,
   timezone,
   canPublish,
+  media,
 }: {
   slug: string;
   postId: string;
@@ -54,6 +64,7 @@ export function PublishingPanel({
   accounts: Account[];
   timezone: string;
   canPublish: boolean;
+  media: Media;
 }) {
   if (variants.length === 0) return null;
   const accountFor = (platform: SocialPlatform) => accounts.find((account) => account.platform === platform);
@@ -62,13 +73,13 @@ export function PublishingPanel({
     <section className="grid gap-3 rounded-lg border border-line bg-surface p-5">
       <div>
         <h2 className="font-display text-base font-bold">Status by platform</h2>
-        <p className="text-sm text-muted">Where each version stands, and whether it goes out on its own or by hand.</p>
+        <p className="text-sm text-muted">Whether each one goes out on its own or needs you.</p>
       </div>
 
       <ul className="grid gap-3">
         {variants.map((variant) => {
           const account = accountFor(variant.platform);
-          const automatic = postsAutomatically(variant, account);
+          const automatic = postsAutomatically(variant, account, media);
           const open = variant.status !== "published" && variant.status !== "queued";
 
           return (
@@ -101,7 +112,7 @@ export function PublishingPanel({
                   {variant.publishError ?? "Publishing failed."}
                 </p>
               ) : (
-                <p className="text-sm text-muted">{howItGoesOut(variant, account, postStatus)}</p>
+                <p className="text-sm text-muted">{howItGoesOut(variant, account, postStatus, media)}</p>
               )}
 
               {/* Only for versions still waiting to go out; a failed one's error already says what to do. */}

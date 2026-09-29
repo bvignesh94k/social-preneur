@@ -154,15 +154,21 @@ export function threadsPostUrl(username: string, shortcode: string): string {
 const POLL_ATTEMPTS = 5;
 const POLL_INTERVAL_MS = 2_000;
 
-// Creates a text container, waits for it to finish, publishes it, then reads
+// Creates a text or single-image container, waits for it to finish, publishes
+// it, then reads
 // back the permalink. The permalink read is best-effort: the post has
 // already gone out by that point, so a failure there does not fail the post.
 export async function createThreadsPost(
   accessToken: string,
-  post: { userId: string; text: string },
+  post: { userId: string; text: string; imageUrl?: string | null },
   doFetch: FetchLike = fetch,
 ): Promise<{ postId: string | null; url: string | null }> {
-  const createBody = new URLSearchParams({ media_type: "TEXT", text: post.text, access_token: accessToken });
+  // Threads fetches the image from its public address while preparing the container.
+  const createBody = new URLSearchParams(
+    post.imageUrl
+      ? { media_type: "IMAGE", image_url: post.imageUrl, text: post.text, access_token: accessToken }
+      : { media_type: "TEXT", text: post.text, access_token: accessToken },
+  );
   const container = await call<{ id?: string }>(
     `${GRAPH_V1}/${encodeURIComponent(post.userId)}/threads`,
     { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: createBody.toString() },

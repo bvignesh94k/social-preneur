@@ -168,6 +168,12 @@ async function refreshExpiringThreadsTokens(db: Database, encryptionKey: string,
   }
 }
 
+// The claim only hands over a version with no media or exactly one image.
+function singleImage(job: PublishJob): string | null {
+  const [first] = job.media;
+  return first?.kind === "image" ? first.url : null;
+}
+
 function readToken(job: PublishJob, label: string, encryptionKey: string, now: Date): string | Failure {
   if (job.account.tokenExpiresAt && job.account.tokenExpiresAt <= now) {
     return { message: `The ${label} connection has expired. ${reconnect(label)}`, retryable: false, reconnect: true };
@@ -269,6 +275,7 @@ export async function runFacebookPublishing(
           pageId: job.account.externalAccountId,
           message: formatFacebookMessage(job.caption, job.hashtags),
           link: job.linkUrl,
+          imageUrl: singleImage(job),
         },
         options.fetch,
       );
@@ -293,7 +300,11 @@ export async function runThreadsPublishing(
     try {
       const { postId, url } = await createThreadsPost(
         token,
-        { userId: job.account.externalAccountId, text: formatThreadsText(job.caption, job.hashtags) },
+        {
+          userId: job.account.externalAccountId,
+          text: formatThreadsText(job.caption, job.hashtags),
+          imageUrl: singleImage(job),
+        },
         options.fetch,
       );
       return { externalPostId: postId, url };

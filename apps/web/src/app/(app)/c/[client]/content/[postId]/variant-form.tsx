@@ -8,12 +8,11 @@ import {
   type SocialPlatform,
 } from "@sp/core";
 import { useActionState, useState } from "react";
-import { ActionButton } from "@/components/action-button";
 import { Field } from "@/components/form-parts";
-import { buttonPrimarySm, buttonSecondarySm, inputClass } from "@/components/ui";
+import { buttonPrimarySm, inputClass } from "@/components/ui";
 import type { FormState } from "@/lib/form-state";
 import { SOCIAL_PLATFORM_LABEL } from "@/lib/labels";
-import { removeVariantAction, saveVariantAction } from "../actions";
+import { saveVariantAction } from "../actions";
 
 export interface VariantValues {
   caption: string;
@@ -45,7 +44,6 @@ export function VariantForm({
   const [hashtags, setHashtags] = useState(values.hashtags);
   const [title, setTitle] = useState(values.title);
   const [linkUrl, setLinkUrl] = useState(values.linkUrl);
-  const [hasMedia, setHasMedia] = useState(values.hasMedia);
 
   const used = countPlatformCharacters(platform, caption);
   const over = used > rules.captionLimit;
@@ -56,12 +54,11 @@ export function VariantForm({
     title,
     linkUrl,
     hashtags: parseHashtags(hashtags),
-    hasMedia,
+    hasMedia: values.hasMedia,
   });
 
   return (
-    <div className="grid gap-3 rounded-lg border border-line bg-surface p-4">
-      <form action={action} className="grid gap-3">
+    <form action={action} className="grid gap-3">
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="postId" value={postId} />
       <input type="hidden" name="platform" value={platform} />
@@ -142,18 +139,6 @@ export function VariantForm({
         </Field>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          name="hasMedia"
-          disabled={readOnly}
-          checked={hasMedia}
-          onChange={(event) => setHasMedia(event.target.checked)}
-          className="size-4 rounded border-line"
-        />
-        An image or video is ready for this post
-      </label>
-
       {live.length > 0 && (
         <ul className="grid gap-1">
           {live.map((issue) => (
@@ -171,7 +156,7 @@ export function VariantForm({
 
       {!readOnly && (
         <button type="submit" className={buttonPrimarySm + " justify-self-start"} disabled={pending}>
-          {pending ? "Saving..." : values.exists ? "Save version" : "Add version"}
+          {pending ? "Saving..." : `Save ${SOCIAL_PLATFORM_LABEL[platform]} version`}
         </button>
       )}
 
@@ -181,22 +166,11 @@ export function VariantForm({
         </p>
       )}
       {state?.ok && (
-          <p role="status" className="text-sm text-accent">
-            Saved.
-          </p>
-        )}
-      </form>
-
-      {values.exists && !readOnly && (
-        <ActionButton
-          action={removeVariantAction}
-          fields={{ slug, postId, platform }}
-          pendingText="Removing..."
-          className={buttonSecondarySm}
-        >
-          Remove this version
-        </ActionButton>
+        <p role="status" className="text-sm text-accent">
+          Saved.
+        </p>
       )}
-    </div>
+    </form>
+
   );
 }

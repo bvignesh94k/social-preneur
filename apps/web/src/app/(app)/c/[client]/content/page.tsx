@@ -1,12 +1,13 @@
-import { CATEGORY_LABELS, STATUS_LABELS, isIsoDate, monthLabel, shiftMonth, todayIn } from "@sp/core";
+import { CATEGORY_LABELS, STATUS_LABELS, monthLabel, shiftMonth, todayIn } from "@sp/core";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Chip, SectionHeader } from "@/components/ui";
+import { ActionButton } from "@/components/action-button";
+import { Chip, SectionHeader, buttonPrimary } from "@/components/ui";
 import { getMonthPlan } from "@/data/content";
 import { PLATFORM_SHORT, POST_STATUS_TONE } from "@/lib/labels";
+import { createPostAction } from "./actions";
 import { MixForm } from "./mix-form";
 import { MonthGrid } from "./month-grid";
-import { NewPostForm } from "./new-post-form";
 
 export const metadata: Metadata = { title: "Content" };
 
@@ -30,15 +31,13 @@ export default async function ContentPage({ params, searchParams }: PageProps<"/
   const previous = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
 
-  const prefill = single(query.new);
-  const newDate = prefill && isIsoDate(prefill) ? prefill : "";
-
   return (
     <div className="grid gap-6">
       <SectionHeader
         title="Content"
         description={`The plan for ${plan.client.name}. Times are ${plan.client.timezone.replace("_", " ")}.`}
         actions={
+          <div className="flex flex-wrap items-center gap-3">
           <nav aria-label="Month" className="flex items-center gap-1">
             <Link
               href={`/c/${slug}/content?year=${previous.year}&month=${previous.month}`}
@@ -56,6 +55,17 @@ export default async function ContentPage({ params, searchParams }: PageProps<"/
               &rarr;
             </Link>
           </nav>
+          {plan.can.edit && (
+            <ActionButton
+              action={createPostAction}
+              fields={{ slug, category: "educational", plannedDate: plan.today }}
+              pendingText="Creating..."
+              className={buttonPrimary}
+            >
+              + Create post
+            </ActionButton>
+          )}
+          </div>
         }
       />
 
@@ -70,16 +80,16 @@ export default async function ContentPage({ params, searchParams }: PageProps<"/
         </div>
       )}
 
-      <MonthGrid slug={slug} year={year} month={month} today={plan.today} byDay={plan.byDay} />
+      <MonthGrid slug={slug} year={year} month={month} today={plan.today} byDay={plan.byDay} canCreate={plan.can.edit} timezone={plan.client.timezone} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="grid gap-3">
+        <section className="grid content-start gap-3">
           <h2 className="font-display text-lg font-bold tracking-tight">
             {monthLabel(year, month)} at a glance
           </h2>
           {plan.postsInMonth.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line px-4 py-6 text-sm text-muted">
-              Nothing planned this month yet. Add the first post and it will appear on the calendar above.
+              Nothing planned this month yet. Click “Create post”, or the + on any day in the calendar.
             </p>
           ) : (
             <ol className="grid gap-2">
@@ -106,8 +116,6 @@ export default async function ContentPage({ params, searchParams }: PageProps<"/
         </section>
 
         <aside className="grid content-start gap-6">
-          {plan.can.edit && <NewPostForm slug={slug} defaultDate={newDate} />}
-
           <section className="grid gap-3 rounded-lg border border-line bg-surface p-5">
             <div>
               <h2 className="font-display text-base font-bold">Balance</h2>

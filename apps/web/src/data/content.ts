@@ -24,6 +24,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { getDb } from "@/lib/db";
 import { requireWorkspace } from "@/lib/session";
+import { mediaPrefix, mediaStorage } from "@/server/media";
 
 export const getContentWorkspace = cache(async (slug: string) => {
   const { actor } = await requireWorkspace();
@@ -122,6 +123,7 @@ export async function getPostDetail(slug: string, postId: string) {
       healthNote,
     })),
     today: todayIn(client.timezone),
+    upload: { storage: mediaStorage(), prefix: mediaPrefix(client.id, post.id) },
     offerings: offerings
       .filter((offering) => offering.status === "active")
       .map(({ id, name, kind }) => ({ id, name, kind })),

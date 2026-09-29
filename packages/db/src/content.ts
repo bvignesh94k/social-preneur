@@ -2,8 +2,10 @@ import {
   CONTENT_CATEGORIES,
   DEFAULT_CONTENT_MIX,
   InvalidInputError,
+  MAX_MEDIA_PER_POST,
   NotFoundError,
   checkVariant,
+  type MediaKind,
   type Actor,
   type ContentCategory,
   type IdeaStatus,
@@ -18,14 +20,16 @@ import { requireClientAccess, type ClientScope } from "./access";
 import { recordAudit } from "./audit";
 import type { Database } from "./client";
 import { isForeignKeyViolation } from "./errors";
-import { contentMix, ideas, postVariants, posts } from "./schema";
+import { contentMix, ideas, postMedia, postVariants, posts } from "./schema";
 
 export type Post = typeof posts.$inferSelect;
 export type PostVariant = typeof postVariants.$inferSelect;
 export type Idea = typeof ideas.$inferSelect;
+export type PostMedia = typeof postMedia.$inferSelect;
 
 export interface PostWithVariants extends Post {
   variants: PostVariant[];
+  media: PostMedia[];
 }
 
 function audit(scope: ClientScope) {
@@ -111,16 +115,19 @@ async function attachVariants(
   rows: Post[],
 ): Promise<PostWithVariants[]> {
   if (rows.length === 0) return [];
+  const postIds = rows.map((row) => row.id);
+  const media = await db
+    .select()
+    .from(postMedia)
+    .where(and(eq(postMedia.clientId, scope.clientId), inArray(postMedia.postId, postIds)))
+    .orderBy(asc(postMedia.position), asc(postMedia.createdAt));
   const variants = await db
     .select()
     .from(postVariants)
     .where(
       and(
         eq(postVariants.clientId, scope.clientId),
-        inArray(
-          postVariants.postId,
-          rows.map((row) => row.id),
-        ),
+        inArray(postVariants.postId, postIds),
       ),
     )
     .orderBy(asc(postVariants.platform));
@@ -131,7 +138,13 @@ async function attachVariants(
     list.push(variant);
     byPost.set(variant.postId, list);
   }
-  return rows.map((row) => ({ ...row, variants: byPost.get(row.id) ?? [] }));
+  const mediaByPost = new Map<string, PostMedia[]>();
+  for (const item of media) {
+    const list = mediaByPost.get(item.postId) ?? [];
+    list.push(item);
+    mediaByPost.set(item.postId, list);
+  }
+  return rows.map((row) => ({ ...row, variants: byPost.get(row.id) ?? [], media: mediaByPost.get(row.id) ?? [] }));
 }
 
 export async function getPost(db: Database, scope: ClientScope, postId: string): Promise<PostWithVariants> {
@@ -556,6 +569,22 @@ export async function duplicatePost(
       );
     }
 
+    const sourceMedia = await tx
+      .select()
+      .from(postMedia)
+      .where(and(eq(postMedia.clientId, scope.clientId), eq(postMedia.postId, postId)));
+    if (sourceMedia.length > 0) {
+      // The copy points at the same stored files; a file is only deleted once
+      // no post uses it any more.
+      await tx.insert(postMedia).values(
+        sourceMedia.map(({ id: _id, createdAt: _createdAt, ...item }) => ({
+          ...item,
+          postId: copy.id,
+          createdBy: actor.userId,
+        })),
+      );
+    }
+
     await recordAudit(tx, {
       ...audit(scope),
       action: "content.post_duplicated",
@@ -615,17 +644,21 @@ export async function saveVariant(
 
   const caption = input.caption.trim();
   const hashtags = cleanList(input.hashtags);
-  const issues: VariantIssue[] = checkVariant(platform, {
-    caption,
-    title: input.title,
-    linkUrl: input.linkUrl,
-    hashtags,
-    hasMedia: input.hasMedia ?? false,
-  });
-  // The platform decides what is publishable, so the stored state follows its rules.
-  const status: VariantStatus = issues.some((issue) => issue.level === "blocker") ? "pending" : "ready";
 
   return db.transaction(async (tx) => {
+    // Uploaded media counts on its own; the flag only matters for creative
+    // that lives outside the app.
+    const hasMedia = input.hasMedia === true || (await countMedia(tx, scope, postId)) > 0;
+    const issues: VariantIssue[] = checkVariant(platform, {
+      caption,
+      title: input.title,
+      linkUrl: input.linkUrl,
+      hashtags,
+      hasMedia,
+    });
+    // The platform decides what is publishable, so the stored state follows its rules.
+    const status: VariantStatus = issues.some((issue) => issue.level === "blocker") ? "pending" : "ready";
+
     const [parent] = await tx
       .select({ id: posts.id, status: posts.status })
       .from(posts)
@@ -645,7 +678,7 @@ export async function saveVariant(
       linkUrl: cleanText(input.linkUrl),
       firstComment: cleanText(input.firstComment),
       hashtags,
-      hasMedia: input.hasMedia ?? false,
+      hasMedia,
       issues,
       status,
     };
@@ -710,6 +743,162 @@ export async function removeVariant(
       objectId: row.id,
       before: { platform },
     });
+  });
+}
+
+// ---------- Media ----------
+
+async function countMedia(tx: Database, scope: ClientScope, postId: string): Promise<number> {
+  const [row] = await tx
+    .select({ total: count() })
+    .from(postMedia)
+    .where(and(eq(postMedia.clientId, scope.clientId), eq(postMedia.postId, postId)));
+  return Number(row?.total ?? 0);
+}
+
+// Media belongs to the whole post. A change is refused once the post is
+// published, or while a version is mid-publish, since the platform may be
+// fetching the file right now.
+async function lockPostForMedia(tx: Database, scope: ClientScope, postId: string): Promise<void> {
+  const [parent] = await tx
+    .select({ status: posts.status })
+    .from(posts)
+    .where(and(eq(posts.clientId, scope.clientId), eq(posts.id, postId)))
+    .limit(1)
+    .for("update");
+  if (!parent) throw new NotFoundError("Post");
+  if (parent.status === "published") throw new InvalidInputError("This post is already published.");
+
+  const [queued] = await tx
+    .select({ id: postVariants.id })
+    .from(postVariants)
+    .where(
+      and(eq(postVariants.clientId, scope.clientId), eq(postVariants.postId, postId), eq(postVariants.status, "queued")),
+    )
+    .limit(1);
+  if (queued) throw new InvalidInputError("This post is being published right now, so its media cannot change.");
+}
+
+// Re-runs each waiting version's checks against the post's media. Published
+// versions are history and stay as they were.
+async function recheckVariants(tx: Database, scope: ClientScope, postId: string): Promise<void> {
+  const hasMedia = (await countMedia(tx, scope, postId)) > 0;
+  const variants = await tx
+    .select()
+    .from(postVariants)
+    .where(and(eq(postVariants.clientId, scope.clientId), eq(postVariants.postId, postId)));
+
+  for (const variant of variants) {
+    if (variant.status === "published" || variant.status === "queued") continue;
+    const issues = checkVariant(variant.platform, {
+      caption: variant.caption,
+      title: variant.title,
+      linkUrl: variant.linkUrl,
+      hashtags: variant.hashtags,
+      hasMedia,
+    });
+    const blocked = issues.some((issue) => issue.level === "blocker");
+    // A failed or skipped version keeps its status; a person decides what happens to it.
+    const status: VariantStatus =
+      variant.status === "failed" || variant.status === "skipped" ? variant.status : blocked ? "pending" : "ready";
+    await tx.update(postVariants).set({ hasMedia, issues, status }).where(eq(postVariants.id, variant.id));
+  }
+}
+
+export interface MediaInput {
+  kind: MediaKind;
+  url: string;
+  pathname: string;
+  contentType: string;
+  sizeBytes: number;
+  width?: number | null;
+  height?: number | null;
+  fileName?: string | null;
+}
+
+export async function addPostMedia(
+  db: Database,
+  actor: Actor,
+  clientId: string,
+  postId: string,
+  input: MediaInput,
+): Promise<PostMedia> {
+  const scope = await requireClientAccess(db, actor, "content.edit", clientId);
+
+  return db.transaction(async (tx) => {
+    await lockPostForMedia(tx, scope, postId);
+
+    const existing = await tx
+      .select({ position: postMedia.position })
+      .from(postMedia)
+      .where(and(eq(postMedia.clientId, scope.clientId), eq(postMedia.postId, postId)));
+    if (existing.length >= MAX_MEDIA_PER_POST) {
+      throw new InvalidInputError(`A post can have up to ${MAX_MEDIA_PER_POST} images or videos.`);
+    }
+
+    const [row] = await tx
+      .insert(postMedia)
+      .values({
+        agencyId: scope.agencyId,
+        clientId: scope.clientId,
+        postId,
+        kind: input.kind,
+        url: input.url,
+        pathname: input.pathname,
+        contentType: input.contentType,
+        sizeBytes: input.sizeBytes,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        fileName: cleanText(input.fileName),
+        position: existing.reduce((max, item) => Math.max(max, item.position + 1), 0),
+        createdBy: actor.userId,
+      })
+      .returning();
+    if (!row) throw new Error("Media insert returned no row");
+
+    await recheckVariants(tx, scope, postId);
+    await recordAudit(tx, {
+      ...audit(scope),
+      action: "content.media_added",
+      objectType: "post_media",
+      objectId: row.id,
+      after: { postId, kind: row.kind, sizeBytes: row.sizeBytes },
+    });
+    return row;
+  });
+}
+
+// Returns the removed item, and whether any other post still uses the same
+// file, so the caller knows whether the stored file can be deleted.
+export async function removePostMedia(
+  db: Database,
+  actor: Actor,
+  clientId: string,
+  postId: string,
+  mediaId: string,
+): Promise<{ media: PostMedia; stillUsed: boolean }> {
+  const scope = await requireClientAccess(db, actor, "content.edit", clientId);
+
+  return db.transaction(async (tx) => {
+    await lockPostForMedia(tx, scope, postId);
+
+    const [row] = await tx
+      .delete(postMedia)
+      .where(and(eq(postMedia.clientId, scope.clientId), eq(postMedia.postId, postId), eq(postMedia.id, mediaId)))
+      .returning();
+    if (!row) throw new NotFoundError("Image or video");
+
+    const [other] = await tx.select({ id: postMedia.id }).from(postMedia).where(eq(postMedia.url, row.url)).limit(1);
+
+    await recheckVariants(tx, scope, postId);
+    await recordAudit(tx, {
+      ...audit(scope),
+      action: "content.media_removed",
+      objectType: "post_media",
+      objectId: row.id,
+      before: { postId, kind: row.kind },
+    });
+    return { media: row, stillUsed: other !== undefined };
   });
 }
 

@@ -71,6 +71,13 @@
       "when": 1790530332462,
       "tag": "0009_publishing",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790657881014,
+      "tag": "0010_post_media",
+      "breakpoints": true
     }
   ]
 }

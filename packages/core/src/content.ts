@@ -147,7 +147,7 @@ export function checkVariant(platform: SocialPlatform, draft: VariantDraft): Var
   }
 
   if (rules.requiresMedia && !draft.hasMedia) {
-    issues.push({ level: "blocker", message: "This platform cannot post without an image or video." });
+    issues.push({ level: "blocker", message: "Needs an image or video. Add one under Image or video." });
   }
 
   if (rules.titleLimit && draft.title && [...draft.title.trim()].length > rules.titleLimit) {
@@ -230,3 +230,52 @@ export const STATUS_LABELS: Record<PostStatus, string> = {
   failed: "Failed",
   archived: "Archived",
 };
+
+// ---------- Media ----------
+
+export const MEDIA_KINDS = ["image", "video"] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+
+// What the upload box accepts. Every platform the app posts to takes these.
+export const MEDIA_CONTENT_TYPES: Record<string, MediaKind> = {
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/webp": "image",
+  "video/mp4": "video",
+  "video/quicktime": "video",
+};
+export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+export const MAX_MEDIA_PER_POST = 10;
+
+export function mediaKindFor(contentType: string): MediaKind | null {
+  return MEDIA_CONTENT_TYPES[contentType] ?? null;
+}
+
+// Platforms the publisher can post on its own, and which media it can carry
+// there. Only a single image goes out automatically for now; video and
+// multi-image posts stay manual until each platform's upload flow is built.
+export const AUTO_PUBLISH_PLATFORMS: readonly SocialPlatform[] = ["linkedin", "facebook", "threads"];
+export const AUTO_SINGLE_IMAGE_PLATFORMS: readonly SocialPlatform[] = ["facebook", "threads"];
+
+export type AutoPublishSupport = "automatic" | "manual_media" | "manual_platform";
+
+export function autoPublishSupport(platform: SocialPlatform, media: { kind: MediaKind }[]): AutoPublishSupport {
+  if (!AUTO_PUBLISH_PLATFORMS.includes(platform)) return "manual_platform";
+  if (media.length === 0) return "automatic";
+  if (AUTO_SINGLE_IMAGE_PLATFORMS.includes(platform) && media.length === 1 && media[0]!.kind === "image") return "automatic";
+  return "manual_media";
+}
+
+// Turns an uploaded file name into something safe for a storage path, keeping
+// the extension so the file is served with the right type.
+export function safeMediaFileName(name: string): string {
+  const dot = name.lastIndexOf(".");
+  const base = (dot > 0 ? name.slice(0, dot) : name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) : "";
+  return `${base || "file"}${ext ? `.${ext}` : ""}`;
+}

@@ -17,6 +17,7 @@
     "@sp/ai": "workspace:*",
     "@sp/core": "workspace:*",
     "@sp/db": "workspace:*",
+    "@vercel/blob": "^2.8.0",
     "better-auth": "^1.7.4",
     "next": "16.3.5",
     "react": "19.2.8",

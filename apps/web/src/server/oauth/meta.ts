@@ -163,25 +163,29 @@ export function facebookPostUrl(postId: string): string {
   return `https://www.facebook.com/${postId}`;
 }
 
-// Publishes a post on the Page. The link goes in its own field so Facebook
-// shows a link preview instead of a bare address in the text.
+// Publishes a post on the Page. A text post carries the link in its own field
+// so Facebook shows a link preview instead of a bare address. A photo post has
+// no link field, so the link goes at the end of the text instead; Facebook
+// fetches the image from its public address.
 export async function createPagePost(
   pageToken: string,
   appSecret: string,
-  post: { pageId: string; message: string; link: string | null },
+  post: { pageId: string; message: string; link: string | null; imageUrl?: string | null },
   doFetch: FetchLike = fetch,
 ): Promise<{ postId: string | null }> {
+  const photo = Boolean(post.imageUrl);
   const body = new URLSearchParams({
-    message: post.message,
+    message: photo && post.link && !post.message.includes(post.link) ? `${post.message}\n\n${post.link}` : post.message,
     published: "true",
     access_token: pageToken,
     appsecret_proof: appSecretProof(pageToken, appSecret),
   });
-  if (post.link) body.set("link", post.link);
+  if (photo) body.set("url", post.imageUrl!);
+  else if (post.link) body.set("link", post.link);
 
   let response: Response;
   try {
-    response = await doFetch(`${GRAPH}/${encodeURIComponent(post.pageId)}/feed`, {
+    response = await doFetch(`${GRAPH}/${encodeURIComponent(post.pageId)}/${photo ? "photos" : "feed"}`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: body.toString(),
@@ -191,9 +195,11 @@ export async function createPagePost(
     throw new MetaApiError("create_post", error instanceof Error ? error.message : String(error));
   }
 
-  const json = (await response.json().catch(() => ({}))) as { id?: string } & GraphError;
+  const json = (await response.json().catch(() => ({}))) as { id?: string; post_id?: string } & GraphError;
   if (!response.ok || json.error) {
     throw new MetaApiError("create_post", json.error?.message ?? `HTTP ${response.status}`, response.status, json.error?.code ?? null);
   }
-  return { postId: json.id ?? null };
+  // A photo answers with the photo ID and the ID of the post that shows it;
+  // only the post ID opens as a post.
+  return { postId: json.post_id ?? json.id ?? null };
 }

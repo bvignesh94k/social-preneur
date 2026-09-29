@@ -1,9 +1,17 @@
-import { InvalidInputError, NotFoundError, type Actor, type PostStatus, type SocialPlatform } from "@sp/core";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, sql, type SQL } from "drizzle-orm";
+import {
+  AUTO_SINGLE_IMAGE_PLATFORMS,
+  InvalidInputError,
+  NotFoundError,
+  type Actor,
+  type MediaKind,
+  type PostStatus,
+  type SocialPlatform,
+} from "@sp/core";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { requireClientAccess, type ClientScope } from "./access";
 import { recordAudit } from "./audit";
 import type { Database } from "./client";
-import { agencies, clients, postVariants, posts, socialAccounts } from "./schema";
+import { agencies, clients, postMedia, postVariants, posts, socialAccounts } from "./schema";
 
 // A job that keeps failing for a temporary reason (rate limit, platform outage)
 // is retried on later runs until this many attempts, then left for a person.
@@ -20,6 +28,8 @@ export interface PublishJob {
   caption: string;
   hashtags: string[];
   linkUrl: string | null;
+  // At most one image today; see mediaEligible.
+  media: { url: string; kind: MediaKind; contentType: string }[];
   attempt: number;
   account: {
     id: string;
@@ -29,14 +39,25 @@ export interface PublishJob {
   };
 }
 
+// Which versions with media the publisher can carry. A text-only version
+// qualifies everywhere. A single uploaded image qualifies where the platform
+// upload is built. Anything else stays manual, including creative marked as
+// ready but kept outside the app: posting the text alone would publish
+// something the team did not intend.
+function mediaEligible(platform: SocialPlatform): SQL {
+  const mediaCount = sql`(select count(*) from ${postMedia} where ${postMedia.postId} = ${posts.id})`;
+  const textOnly = and(eq(postVariants.hasMedia, false), sql`${mediaCount} = 0`)!;
+  if (!AUTO_SINGLE_IMAGE_PLATFORMS.includes(platform)) return textOnly;
+  const singleImage = sql`${mediaCount} = 1 and exists (select 1 from ${postMedia} where ${postMedia.postId} = ${posts.id} and ${postMedia.kind} = 'image')`;
+  return or(textOnly, singleImage)!;
+}
+
 // Everything that must be true for the publisher to post a version on its own.
-// Versions with media stay manual: the image lives outside the app, and posting
-// the text alone would publish something the team did not intend.
 function eligible(platform: SocialPlatform, now: Date): SQL {
   return and(
     eq(postVariants.platform, platform),
     eq(postVariants.status, "ready"),
-    eq(postVariants.hasMedia, false),
+    mediaEligible(platform),
     eq(posts.status, "scheduled"),
     lte(posts.scheduledAt, now),
     eq(socialAccounts.connectionMode, "automatic"),
@@ -178,6 +199,12 @@ export async function claimDuePublishJobs(
       )
       .where(inArray(postVariants.id, ids));
 
+    const media = await tx
+      .select({ postId: postMedia.postId, url: postMedia.url, kind: postMedia.kind, contentType: postMedia.contentType })
+      .from(postMedia)
+      .where(inArray(postMedia.postId, [...new Set(rows.map((row) => row.postId))]))
+      .orderBy(asc(postMedia.position));
+
     return rows.map((row) => ({
       variantId: row.variantId,
       postId: row.postId,
@@ -186,6 +213,9 @@ export async function claimDuePublishJobs(
       caption: row.caption,
       hashtags: row.hashtags,
       linkUrl: row.linkUrl,
+      media: media
+        .filter((item) => item.postId === row.postId)
+        .map(({ url, kind, contentType }) => ({ url, kind, contentType })),
       attempt: row.attempt,
       account: {
         id: row.accountId,
